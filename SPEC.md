@@ -152,3 +152,13 @@ Respuestas del dueño y cambios de alcance aprobados, en orden.
 - Zona: Zapopan (zona norte), sin recargo. Para otras zonas, botón de WhatsApp. Pendiente: colonias y recargos.
 - Lunes a domingo de 9:00 a 18:00. Franjas: Mañana 9–13 y Tarde 13–18. Pendiente: cupo real (por ahora 2).
 - El dueño quiere editar estos datos él mismo (panel del negocio, Hito 3). Pendiente: si se adelanta.
+
+### 2026-10-12 — Respuestas del dueño y nuevo orden de hitos
+- "Full detailing" incluye todos los servicios y se elige en lugar del lavado normal: es servicio principal.
+- Caben 3 lavados normales por franja. Con extras caben menos; el dueño lo valora. Por ahora el cupo es 3 por franja.
+  Pendiente proponer cómo considerar los extras en el cupo (al hacer el cotizador).
+- Zonas: Capital Norte, Valle Imperial, Real de Valdepeñas, La Cima y Boreales, sin recargo.
+- El dueño entra al panel con vazquique@gmail.com (también es el superadmin).
+- Nuevo orden (el dueño lo dejó a criterio de Claude): primero la parte del panel para editar los datos del
+  negocio, luego el cotizador, luego el anticipo con Mercado Pago, luego la parte del panel de reservas,
+  multi-negocio y membresías.

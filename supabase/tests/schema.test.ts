@@ -76,7 +76,19 @@ describe("schema", () => {
          (select count(*)::int from public.time_slots where business_id = $1) as time_slots`,
       [jbsId],
     );
-    expect(counts).toEqual({ vehicle_types: 3, services: 14, prices: 3, zones: 1, time_slots: 2 });
+    expect(counts).toEqual({ vehicle_types: 3, services: 14, prices: 3, zones: 5, time_slots: 2 });
+
+    const { rows: baseServices } = await db.query<{ name: string }>(
+      "select name from public.services where business_id = $1 and kind = 'base' order by sort_order",
+      [jbsId],
+    );
+    expect(baseServices.map((row) => row.name)).toEqual(["Lavado normal", "Full detailing"]);
+
+    const { rows: capacities } = await db.query<{ capacity: number }>(
+      "select capacity from public.time_slots where business_id = $1",
+      [jbsId],
+    );
+    expect(capacities.map((row) => row.capacity)).toEqual([3, 3]);
   });
 });
 
