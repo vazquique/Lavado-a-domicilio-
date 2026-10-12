@@ -31,7 +31,7 @@ async function ServicesEditor() {
       .order("created_at"),
     supabase
       .from("services")
-      .select("id, name, description, kind, active, sort_order")
+      .select("id, name, description, kind, capacity_units, active, sort_order")
       .eq("business_id", business.id)
       .order("kind")
       .order("sort_order")
@@ -57,6 +57,7 @@ async function ServicesEditor() {
     name: service.name,
     description: service.description,
     kind: service.kind,
+    capacityUnits: service.capacity_units,
     active: service.active,
     sortOrder: service.sort_order,
     prices: pricesByService.get(service.id) ?? {},

@@ -10,7 +10,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "check": "npm run lint && npm run typecheck && npm run test",
-    "supabase:local": "node supabase/local/server.mjs"
+    "supabase:local": "node supabase/local/server.mjs",
+    "e2e": "node e2e/seed-cotizador.mjs && node e2e/panel.mjs && node e2e/login-link.mjs && node e2e/cotizador.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -34,6 +35,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
+    "playwright-core": "^1.64.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^5.0.3"

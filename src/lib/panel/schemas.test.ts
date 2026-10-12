@@ -17,6 +17,7 @@ describe("serviceSchema", () => {
       name: "  Pulido ",
       description: null,
       kind: "extra",
+      capacityUnits: "1",
       active: "on",
       sortOrder: "",
     });
@@ -25,14 +26,23 @@ describe("serviceSchema", () => {
       name: "Pulido",
       description: "",
       kind: "extra",
+      capacityUnits: 1,
       active: true,
       sortOrder: 0,
     });
   });
 
+  test("places must be a whole number from 0 to 20", () => {
+    const result = serviceSchema.safeParse({ name: "Full detailing", kind: "base", capacityUnits: "25" });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(firstError(result.error)).toBe("Lugares que ocupa: máximo 20.");
+  });
+
   test("unchecked checkbox means hidden; empty name is rejected", () => {
-    expect(serviceSchema.parse({ name: "Cera", kind: "extra", active: null, sortOrder: "3" }).active).toBe(false);
-    const result = serviceSchema.safeParse({ name: " ", kind: "extra" });
+    expect(
+      serviceSchema.parse({ name: "Cera", kind: "extra", capacityUnits: "0", active: null, sortOrder: "3" }).active,
+    ).toBe(false);
+    const result = serviceSchema.safeParse({ name: " ", kind: "extra", capacityUnits: "0" });
     expect(result.success).toBe(false);
     if (!result.success) expect(firstError(result.error)).toBe("Nombre: no puede ir vacío.");
   });
