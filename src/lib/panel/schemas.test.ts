@@ -19,7 +19,8 @@ describe("serviceSchema", () => {
       kind: "extra",
       capacityUnits: "1",
       active: "on",
-      sortOrder: "",
+      area: "interior",
+      carParts: ["seats", "floors"],
     });
     expect(result).toEqual({
       id: undefined,
@@ -29,8 +30,17 @@ describe("serviceSchema", () => {
       capacityUnits: 1,
       includesExtras: false,
       active: true,
-      sortOrder: 0,
+      area: "interior",
+      carParts: ["seats", "floors"],
     });
+  });
+
+  test("only known areas and car parts", () => {
+    const base = { name: "Cera", kind: "extra", capacityUnits: "0", area: "exterior", carParts: [] };
+    expect(serviceSchema.safeParse({ ...base, area: "motor" }).success).toBe(false);
+    const result = serviceSchema.safeParse({ ...base, carParts: ["wheels", "engine"] });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(firstError(result.error)).toBe("Partes del auto: elige de la lista.");
   });
 
   test("places must be a whole number from 0 to 20", () => {
@@ -41,7 +51,8 @@ describe("serviceSchema", () => {
 
   test("unchecked checkbox means hidden; empty name is rejected", () => {
     expect(
-      serviceSchema.parse({ name: "Cera", kind: "extra", capacityUnits: "0", active: null, sortOrder: "3" }).active,
+      serviceSchema.parse({ name: "Cera", kind: "extra", capacityUnits: "0", active: null, area: "exterior", carParts: [] })
+        .active,
     ).toBe(false);
     const result = serviceSchema.safeParse({ name: " ", kind: "extra", capacityUnits: "0" });
     expect(result.success).toBe(false);

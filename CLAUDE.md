@@ -90,6 +90,9 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
 - Lugares: cada franja tiene `capacity` lugares; cada servicio ocupa `capacity_units` (reserva = suma, mínimo 1).
 - Un servicio principal con `includes_extras` (Full detailing) oculta los extras y `calculateQuote` los ignora.
   Lo ocupado sale de la función `public.slot_usage` (solo conteos; las reservas no son públicas).
+- Servicios: `area` (exterior/interior) y `car_parts` (partes del auto, `src/lib/car-parts.ts`). La página agrupa los
+  extras en pestañas y `CarDiagram` (`src/components/car-diagram.tsx`) ilumina las partes elegidas; el panel los
+  acomoda con flechas (`moveService`: orden 10, 20, 30… dentro de cada grupo).
 
 ## Pagos (Mercado Pago)
 - Checkout Pro por REST en `src/lib/mercadopago.ts` (nombres de campos del SDK oficial `mercadopago` 3.x).

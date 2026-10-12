@@ -37,7 +37,7 @@ step("logged in, h1s on page: " + JSON.stringify(await page.locator("h1").allInn
 await shot("03-panel");
 
 await page.click("text=Servicios y precios");
-await page.waitForSelector("text=Principales");
+await page.waitForSelector("text=Extras de exterior");
 await shot("04-servicios");
 const rines = page.locator("details", { hasText: "Detallado de rines y llantas" }).first();
 await rines.locator("summary").click();
@@ -54,6 +54,24 @@ await rines.locator("button[type=submit]").click();
 await rines.locator("text=Guardado.").waitFor();
 step("prices saved");
 await shot("05-servicios-guardado");
+
+// The arrows put services in the order customers see them, within their group.
+const exteriorNames = () =>
+  page.locator("section", { hasText: "Extras de exterior" }).locator("summary span.font-medium").allInnerTexts();
+const before = await exteriorNames();
+await page.click("button[aria-label='Subir Restauración de faros']");
+await page.waitForFunction(
+  (old) =>
+    [...document.querySelectorAll("section")]
+      .find((section) => section.textContent.includes("Extras de exterior"))
+      ?.querySelectorAll("summary span.font-medium")[old] !== undefined &&
+    [...document.querySelectorAll("section")]
+      .find((section) => section.textContent.includes("Extras de exterior"))
+      .querySelectorAll("summary span.font-medium")[old - 1].textContent === "Restauración de faros",
+  before.indexOf("Restauración de faros"),
+);
+const after = await exteriorNames();
+step(`moved up: faros ${before.indexOf("Restauración de faros")} -> ${after.indexOf("Restauración de faros")}`);
 
 await page.goto(`${base}/panel/negocio`);
 await page.waitForSelector("#whatsappPhone");
@@ -108,6 +126,7 @@ await page.click("button:has-text('Carro normal')");
 await page.click("button:has-text('Lavado normal')");
 await page.waitForSelector("text=Detallado de rines y llantas");
 step("public page extra: " + (await page.locator("button", { hasText: "Detallado de rines" }).innerText()).replace(/\s+/g, " "));
+step("public exterior order: " + JSON.stringify(await page.locator("[role=tabpanel] button span.font-medium").allInnerTexts()));
 step("logo on public page: " + (await page.locator("img[alt^='Logo de']").count()));
 await shot("11-publica");
 

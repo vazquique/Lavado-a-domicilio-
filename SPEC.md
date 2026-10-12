@@ -206,3 +206,14 @@ Respuestas del dueño y cambios de alcance aprobados, en orden.
 - Mientras Mercado Pago no esté configurado en Vercel, el resumen sigue con "Enviar por WhatsApp para apartar".
 - Credenciales de prueba (cuenta de prueba vendedora) hasta que el dueño diga. `/api/health` dice si el token
   es de una cuenta de prueba.
+
+### 2026-10-12 — Servicios por área y dibujo del auto (pedido del dueño)
+- Cada servicio tiene área (exterior o interior) y las partes del auto que trabaja: carrocería, vidrios, rines y
+  llantas, faros, plásticos exteriores, asientos, pisos y alfombras, y tablero.
+- Página del cliente: tarjetas con ícono y partes; extras en pestañas Exterior / Interior; un dibujo del auto
+  visto desde arriba ilumina, en vivo y en el resumen, lo que se le va a hacer.
+- Panel: servicios agrupados (Principales, Extras de exterior, Extras de interior) con flechas para acomodarlos y
+  botones para elegir las partes, con el dibujo en miniatura. Se quitó el campo "Orden": lo nuevo va al final de
+  su grupo.
+- Áreas, partes y orden inicial de JB's Bros los puso Claude; el dueño puede cambiarlos.
+- El pago con Mercado Pago está listo pero espera las llaves de prueba (el dueño las pondrá después).

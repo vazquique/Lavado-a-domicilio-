@@ -1,11 +1,16 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ScheduleRules, SlotRule, SlotUsage } from "./availability";
+import { isCarPart, type CarPart, type ServiceArea } from "./car-parts";
 import { addDays, todayInMexico } from "./dates";
 import { logoUrl } from "./logos";
 import type { QuoteCatalog } from "./quote";
 
-export type BookingService = QuoteCatalog["services"][number] & { description: string };
+export type BookingService = QuoteCatalog["services"][number] & {
+  description: string;
+  area: ServiceArea;
+  carParts: CarPart[];
+};
 
 // Everything the public booking page needs for one business. Plain data, so it can
 // be passed to the browser; amounts are recomputed on the server before any use.
@@ -50,7 +55,7 @@ export async function getBookingData(supabase: SupabaseClient, slug: string, now
     supabase.from("vehicle_types").select("id, name").eq("business_id", business.id).eq("active", true).order("sort_order"),
     supabase
       .from("services")
-      .select("id, name, description, kind, capacity_units, includes_extras")
+      .select("id, name, description, kind, capacity_units, includes_extras, area, car_parts")
       .eq("business_id", business.id)
       .eq("active", true)
       .order("sort_order"),
@@ -95,6 +100,8 @@ export async function getBookingData(supabase: SupabaseClient, slug: string, now
         kind: row.kind,
         capacityUnits: row.capacity_units,
         includesExtras: row.includes_extras,
+        area: row.area === "interior" ? "interior" : "exterior",
+        carParts: ((row.car_parts as unknown[] | null) ?? []).filter(isCarPart),
       })),
       prices: (prices.data ?? []).map((row) => ({
         serviceId: row.service_id,

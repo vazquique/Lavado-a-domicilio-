@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CAR_PARTS, SERVICE_AREAS } from "@/lib/car-parts";
 import { normalizeMxPhone, parsePesos } from "./parse";
 
 // Validation for the panel forms. Messages are shown to the owner as-is.
@@ -63,7 +64,9 @@ export const serviceSchema = z.object({
     .max(20, "Lugares que ocupa: máximo 20."),
   includesExtras: checkbox,
   active: checkbox,
-  sortOrder,
+  // Which tab the extra shows up in, and the parts of the car it lights up.
+  area: z.enum(SERVICE_AREAS, { error: "Área: elige exterior o interior." }),
+  carParts: z.array(z.enum(CAR_PARTS, { error: "Partes del auto: elige de la lista." })).max(CAR_PARTS.length),
 });
 
 export const vehicleTypeSchema = z.object({

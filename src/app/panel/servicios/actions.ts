@@ -2,6 +2,7 @@
 
 import { refresh } from "next/cache";
 import { dbFailure, failure, isUuid, success, type ActionState } from "@/lib/panel/action-state";
+import { moveWithinGroup, nextSortOrder } from "@/lib/panel/reorder";
 import { firstError, optionalPesosField, serviceSchema } from "@/lib/panel/schemas";
 import { requirePanelBusiness } from "@/lib/panel/session";
 
@@ -17,7 +18,8 @@ export async function saveService(_prev: ActionState, formData: FormData): Promi
     capacityUnits: formData.get("capacityUnits"),
     includesExtras: formData.get("includesExtras"),
     active: formData.get("active"),
-    sortOrder: formData.get("sortOrder"),
+    area: formData.get("area"),
+    carParts: formData.getAll("carParts"),
   });
   if (!parsed.success) return failure(firstError(parsed.error));
 
@@ -36,7 +38,7 @@ export async function saveService(_prev: ActionState, formData: FormData): Promi
     prices.push({ vehicleTypeId: vehicle.id, cents: price.data });
   }
 
-  const { id, name, description, kind, capacityUnits, includesExtras, active, sortOrder } = parsed.data;
+  const { id, name, description, kind, capacityUnits, includesExtras, active, area, carParts } = parsed.data;
   const values = {
     name,
     description,
@@ -45,11 +47,29 @@ export async function saveService(_prev: ActionState, formData: FormData): Promi
     // Only main services can include the extras.
     includes_extras: kind === "base" && includesExtras,
     active,
-    sort_order: sortOrder,
+    area,
+    car_parts: carParts,
   };
-  const saved = id
-    ? await supabase.from("services").update(values).eq("id", id).eq("business_id", business.id).select("id").single()
-    : await supabase.from("services").insert({ ...values, business_id: business.id }).select("id").single();
+
+  let saved;
+  if (id) {
+    saved = await supabase.from("services").update(values).eq("id", id).eq("business_id", business.id).select("id").single();
+  } else {
+    // New services go to the end of their group; the arrows move them.
+    const { data: group, error } = await supabase
+      .from("services")
+      .select("id, sort_order")
+      .eq("business_id", business.id)
+      .eq("kind", kind)
+      .eq("area", area);
+    if (error) return dbFailure(error);
+    const sortOrder = nextSortOrder(group.map((row) => ({ id: row.id, sortOrder: row.sort_order })));
+    saved = await supabase
+      .from("services")
+      .insert({ ...values, sort_order: sortOrder, business_id: business.id })
+      .select("id")
+      .single();
+  }
   if (saved.error) return dbFailure(saved.error);
   const serviceId: string = saved.data.id;
 
@@ -89,4 +109,31 @@ export async function deleteService(id: string): Promise<ActionState> {
   if (error) return dbFailure(error);
   refresh();
   return success("Borrado.");
+}
+
+// Moves a service one place up or down within its group (main services, exterior extras
+// or interior extras), which is the order customers see.
+export async function moveService(id: string, direction: "up" | "down"): Promise<ActionState> {
+  const { supabase, business } = await requirePanelBusiness();
+  if (!isUuid(id) || (direction !== "up" && direction !== "down")) return failure("No se encontró.");
+
+  const { data, error } = await supabase
+    .from("services")
+    .select("id, kind, area, sort_order")
+    .eq("business_id", business.id)
+    .order("sort_order")
+    .order("created_at");
+  if (error) return dbFailure(error);
+
+  const services = data.map((row) => ({ id: row.id, sortOrder: row.sort_order, group: row.kind === "base" ? "base" : row.area }));
+  for (const change of moveWithinGroup(services, (service) => service.group, id, direction)) {
+    const { error: updateError } = await supabase
+      .from("services")
+      .update({ sort_order: change.sortOrder })
+      .eq("id", change.id)
+      .eq("business_id", business.id);
+    if (updateError) return dbFailure(updateError);
+  }
+  refresh();
+  return success("Listo.");
 }

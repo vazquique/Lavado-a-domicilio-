@@ -1,10 +1,21 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+import { CarDiagram } from "@/components/car-diagram";
 import { DeleteButton } from "@/components/panel/delete-button";
 import { CheckboxField, Field, FormFooter, selectClassName } from "@/components/panel/form-bits";
 import { useFormAction } from "@/components/panel/use-form-action";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AREA_LABELS,
+  CAR_PART_LABELS,
+  CAR_PARTS,
+  PARTS_BY_AREA,
+  SERVICE_AREAS,
+  type CarPart,
+  type ServiceArea,
+} from "@/lib/car-parts";
 import { centsToPesosInput } from "@/lib/panel/parse";
 import { deleteService, saveService } from "./actions";
 
@@ -17,15 +28,19 @@ export type ServiceValues = {
   includesExtras: boolean;
   active: boolean;
   sortOrder: number;
+  area: ServiceArea;
+  carParts: CarPart[];
   prices: Record<string, number>;
 };
 
 export function ServiceForm({
   service,
   vehicleTypes,
+  brandColor,
 }: {
   service?: ServiceValues;
   vehicleTypes: { id: string; name: string }[];
+  brandColor: string;
 }) {
   const { state, pending, formRef, onSubmit } = useFormAction(saveService, { resetOnSuccess: !service });
   const key = service?.id ?? "new";
@@ -45,28 +60,25 @@ export function ServiceForm({
           rows={2}
         />
       </Field>
-      <div className="grid grid-cols-[1fr_5rem] gap-3">
-        <Field
-          label="Tipo"
-          htmlFor={`kind-${key}`}
-          hint="Principal: el cliente elige uno. Extra: se suma al principal."
-        >
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Tipo" htmlFor={`kind-${key}`} hint="Principal: el cliente elige uno. Extra: se suma.">
           <select id={`kind-${key}`} name="kind" defaultValue={service?.kind ?? "extra"} className={selectClassName}>
             <option value="base">Principal</option>
             <option value="extra">Extra</option>
           </select>
         </Field>
-        <Field label="Orden" htmlFor={`order-${key}`}>
-          <Input
-            id={`order-${key}`}
-            name="sortOrder"
-            type="number"
-            inputMode="numeric"
-            min={0}
-            defaultValue={service?.sortOrder ?? 0}
-          />
+        <Field label="Área" htmlFor={`area-${key}`} hint="En qué pestaña aparece el extra.">
+          <select id={`area-${key}`} name="area" defaultValue={service?.area ?? "exterior"} className={selectClassName}>
+            {SERVICE_AREAS.map((area) => (
+              <option key={area} value={area}>
+                {AREA_LABELS[area]}
+              </option>
+            ))}
+          </select>
         </Field>
       </div>
+
+      <CarPartsField defaultParts={service?.carParts ?? []} color={brandColor} />
 
       <Field
         label="Lugares que ocupa"
@@ -126,5 +138,60 @@ export function ServiceForm({
         )}
       </FormFooter>
     </form>
+  );
+}
+
+function checkedParts(fieldset: HTMLFieldSetElement | null): CarPart[] {
+  const checked = new Set(
+    Array.from(fieldset?.querySelectorAll<HTMLInputElement>("input[name=carParts]:checked") ?? [], (input) => input.value),
+  );
+  return CAR_PARTS.filter((part) => checked.has(part));
+}
+
+// Parts of the car the service works on, as chips, with the drawing customers see.
+function CarPartsField({ defaultParts, color }: { defaultParts: CarPart[]; color: string }) {
+  const [parts, setParts] = useState(defaultParts);
+  const ref = useRef<HTMLFieldSetElement>(null);
+
+  // "Add new" forms are reset after saving: redraw once the browser has cleared the chips.
+  useEffect(() => {
+    const form = ref.current?.form;
+    if (!form) return;
+    const onReset = () => setTimeout(() => setParts(checkedParts(ref.current)), 0);
+    form.addEventListener("reset", onReset);
+    return () => form.removeEventListener("reset", onReset);
+  }, []);
+
+  return (
+    <fieldset ref={ref} onChange={() => setParts(checkedParts(ref.current))} className="space-y-2">
+      <legend className="text-sm font-medium">Partes del auto</legend>
+      <p className="text-xs text-muted-foreground">Se iluminan en el dibujo del auto que ven tus clientes.</p>
+      <div className="flex items-start gap-4">
+        <CarDiagram parts={parts} color={color} className="w-16 shrink-0" />
+        <div className="space-y-3">
+          {SERVICE_AREAS.map((area) => (
+            <div key={area} className="space-y-1.5">
+              <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{AREA_LABELS[area]}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {PARTS_BY_AREA[area].map((part) => (
+                  <label key={part} className="cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="carParts"
+                      value={part}
+                      defaultChecked={defaultParts.includes(part)}
+                      className="peer sr-only"
+                    />
+                    <span className="block rounded-full border px-3 py-1.5 text-xs peer-checked:border-neutral-900 peer-checked:bg-neutral-900 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
+                      {CAR_PART_LABELS[part]}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </fieldset>
   );
 }

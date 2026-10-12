@@ -13,6 +13,7 @@ const prices = [
   { service_id: id("Full detailing"), vehicle_type_id: car, price_cents: 150000 },
   { service_id: id("Restauración de faros"), vehicle_type_id: car, price_cents: 40000 },
   { service_id: id("Tratamiento cerámico"), vehicle_type_id: car, price_cents: 250000 },
+  { service_id: id("Hidratación de cueros"), vehicle_type_id: car, price_cents: 35000 },
 ].map((price) => ({ ...price, business_id: business.id }));
 let r = await fetch(`${base}/service_prices`, { method: "POST", headers, body: JSON.stringify(prices) });
 console.log("prices", r.status);

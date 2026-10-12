@@ -56,3 +56,32 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Car drawing on the booking page: parts fade into the business color, sparkles twinkle. */
+.car-diagram .car-part {
+  transition:
+    fill 300ms ease,
+    fill-opacity 300ms ease,
+    stroke 300ms ease;
+}
+@keyframes car-twinkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.car-sparkle {
+  animation: car-twinkle 1.8s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .car-sparkle {
+    animation: none;
+  }
+}

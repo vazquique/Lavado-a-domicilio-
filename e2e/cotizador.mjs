@@ -23,6 +23,11 @@ await page.click("button:has-text('Lavado normal')");
 step("bar after base: " + (await bar()));
 await page.click("button[role=checkbox]:has-text('Restauración de faros')");
 step("bar after extra: " + (await bar()));
+step("car drawing: " + (await page.locator("svg.car-diagram").first().getAttribute("aria-label")));
+step("tabs: " + JSON.stringify(await page.locator("[role=tab]").allInnerTexts()));
+await page.click("[role=tab]:has-text('Interior')");
+step("interior extras: " + JSON.stringify(await page.locator("[role=tabpanel] button span.font-medium").allInnerTexts()));
+await page.click("[role=tab]:has-text('Exterior')");
 await page.click("button:has-text('Capital Norte')");
 
 // Day buttons by day number (today disappears once no slot can be reached in time).

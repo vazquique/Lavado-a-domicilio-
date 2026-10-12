@@ -1,8 +1,19 @@
 "use client";
 
+import { Armchair, Car, Check } from "lucide-react";
 import { useState, useTransition, type CSSProperties, type ReactNode } from "react";
+import { CarSummary, ServiceIconBadge } from "@/components/car-summary";
 import { bookableDates, daysWithTimeLeft, slotsForDate, type SlotAvailability } from "@/lib/availability";
-import type { BookingData } from "@/lib/booking-data";
+import type { BookingData, BookingService } from "@/lib/booking-data";
+import {
+  AREA_LABELS,
+  partsLabels,
+  partsWorkedOn,
+  serviceIcon,
+  SERVICE_AREAS,
+  type CarPart,
+  type ServiceArea,
+} from "@/lib/car-parts";
 import { readableTextColor } from "@/lib/colors";
 import { dayLabel } from "@/lib/dates";
 import { formatMXN } from "@/lib/money";
@@ -44,6 +55,7 @@ export function BookingFlow({
   const [extraIds, setExtraIds] = useState<string[]>([]);
   const [zoneId, setZoneId] = useState<string | null>(null);
   const [zoneMissing, setZoneMissing] = useState(false);
+  const [extrasTab, setExtrasTab] = useState<ServiceArea>("exterior");
   const [date, setDate] = useState<string | null>(null);
   const [slotId, setSlotId] = useState<string | null>(null);
   const [customer, setCustomer] = useState<Customer>(EMPTY_CUSTOMER);
@@ -65,6 +77,13 @@ export function BookingFlow({
       ? calculateQuote(catalog, { vehicleTypeId, baseServiceId: base, extraServiceIds: extras, zoneId })
       : null;
   const quote = result?.ok ? result.quote : null;
+  // What the drawing lights up: the main service plus the chosen extras.
+  const parts = partsWorkedOn([
+    ...(baseService ? [baseService] : []),
+    ...offered.extras.filter((service) => extras.includes(service.id)),
+  ]);
+  const extraAreas = SERVICE_AREAS.filter((area) => offered.extras.some((service) => service.area === area));
+  const tab = extraAreas.includes(extrasTab) ? extrasTab : extraAreas[0];
   const unitsNeeded = quote?.capacityUnits ?? 1;
 
   const slotsByDate = new Map(
@@ -133,6 +152,10 @@ export function BookingFlow({
           onBack={() => setSummary(null)}
           policy={data.business.cancellationPolicy}
           privacy={data.business.privacyNotice}
+          parts={partsWorkedOn(
+            summary.quote.quote.lines.flatMap((line) => catalog.services.filter((service) => service.id === line.serviceId)),
+          )}
+          brandColor={data.business.brandColor}
         />
       </div>
     );
@@ -160,36 +183,66 @@ export function BookingFlow({
         ) : (
           <div className="space-y-2">
             {offered.base.map((service) => (
-              <Choice key={service.id} selected={service.id === base} onClick={() => setBaseServiceId(service.id)}>
-                <span className="flex justify-between gap-3">
-                  <span className="font-medium">{service.name}</span>
-                  <span className="font-semibold">{formatMXN(service.priceCents)}</span>
-                </span>
-                {service.description && <span className="mt-1 block text-sm opacity-80">{service.description}</span>}
-                {service.includesExtras && <span className="mt-1 block text-sm opacity-80">Incluye todos los extras.</span>}
-              </Choice>
+              <ServiceCard
+                key={service.id}
+                service={service}
+                selected={service.id === base}
+                onClick={() => setBaseServiceId(service.id)}
+              />
             ))}
           </div>
         )}
+        {baseService && <CarSummary parts={parts} color={data.business.brandColor} />}
       </Step>
 
       {vehicleTypeId && base && extrasAllowed && offered.extras.length > 0 && (
         <Step number={3} title="Extras (opcional)">
-          <div className="space-y-2">
-            {offered.extras.map((service) => (
-              <Choice
-                key={service.id}
-                selected={extras.includes(service.id)}
-                onClick={() => toggleExtra(service.id)}
-                role="checkbox"
-              >
-                <span className="flex justify-between gap-3">
-                  <span>{service.name}</span>
-                  <span className="shrink-0 font-semibold">+{formatMXN(service.priceCents)}</span>
-                </span>
-                {service.description && <span className="mt-1 block text-sm opacity-80">{service.description}</span>}
-              </Choice>
-            ))}
+          {extraAreas.length > 1 && (
+            <div role="tablist" aria-label="Extras" className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
+              {extraAreas.map((area) => {
+                const count = offered.extras.filter((service) => service.area === area && extras.includes(service.id)).length;
+                const Icon = area === "exterior" ? Car : Armchair;
+                return (
+                  <button
+                    key={area}
+                    type="button"
+                    role="tab"
+                    aria-selected={area === tab}
+                    onClick={() => setExtrasTab(area)}
+                    className={cn(
+                      "flex h-10 items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors",
+                      area === tab ? "bg-card shadow-sm" : "text-muted-foreground",
+                    )}
+                  >
+                    <Icon className="size-4" aria-hidden />
+                    {AREA_LABELS[area]}
+                    {count > 0 && (
+                      <span className="rounded-full bg-[var(--brand)] px-1.5 text-xs leading-5 text-[var(--brand-text)]">
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <p className="text-sm text-muted-foreground">
+            {tab === "interior"
+              ? "Asientos, alfombras, tablero y cueros."
+              : "Pintura, vidrios, rines, faros y plásticos de afuera."}
+          </p>
+          <div className="space-y-2" role="tabpanel">
+            {offered.extras
+              .filter((service) => service.area === tab)
+              .map((service) => (
+                <ServiceCard
+                  key={service.id}
+                  service={service}
+                  selected={extras.includes(service.id)}
+                  onClick={() => toggleExtra(service.id)}
+                  role="checkbox"
+                />
+              ))}
           </div>
         </Step>
       )}
@@ -376,12 +429,16 @@ function Summary({
   onBack,
   policy,
   privacy,
+  parts,
+  brandColor,
 }: {
   summary: QuoteSummary;
   request: BookingRequest;
   onBack: () => void;
   policy: string;
   privacy: string;
+  parts: CarPart[];
+  brandColor: string;
 }) {
   const { quote } = summary;
   const [option, setOption] = useState<PaymentOption>(summary.choices[0]?.option ?? "full");
@@ -423,6 +480,7 @@ function Summary({
           <Row label="Saldo el día del servicio" value={formatMXN(quote.balanceCents)} />
         </div>
       </section>
+      <CarSummary parts={parts} color={brandColor} title="Esto le haremos a tu auto" />
       <section className="space-y-1 rounded-xl border bg-card p-4 text-sm shadow-sm">
         <p className="font-medium first-letter:uppercase">{summary.dateLabel}</p>
         <p>
@@ -527,6 +585,72 @@ function Summary({
         Cambiar algo
       </button>
     </div>
+  );
+}
+
+// A service the customer can pick: its picture, name, price and the parts of the car it covers.
+function ServiceCard({
+  service,
+  selected,
+  onClick,
+  role,
+}: {
+  service: BookingService & { priceCents: number };
+  selected: boolean;
+  onClick: () => void;
+  role?: "checkbox";
+}) {
+  const labels = partsLabels(service.carParts);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      role={role}
+      aria-checked={role === "checkbox" ? selected : undefined}
+      aria-pressed={role === "checkbox" ? undefined : selected}
+      className={cn(
+        "flex w-full items-start gap-3 rounded-2xl border-2 bg-card p-3 text-left transition-colors",
+        selected ? "border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-text)]" : "border-border",
+      )}
+    >
+      <ServiceIconBadge
+        icon={serviceIcon(service)}
+        className={selected ? "bg-white/20" : "bg-[color-mix(in_oklab,var(--brand)_14%,white)] text-[var(--brand)]"}
+      />
+      <span className="min-w-0 flex-1">
+        <span className="flex justify-between gap-3">
+          <span className="font-medium">{service.name}</span>
+          <span className="shrink-0 font-semibold">
+            {role === "checkbox" ? "+" : ""}
+            {formatMXN(service.priceCents)}
+          </span>
+        </span>
+        {service.description && <span className="mt-1 block text-sm opacity-80">{service.description}</span>}
+        {service.includesExtras && <span className="mt-1 block text-sm opacity-80">Incluye todos los extras.</span>}
+        {labels.length > 0 && (
+          <span className="mt-2 flex flex-wrap gap-1">
+            {labels.map((label) => (
+              <span
+                key={label}
+                className={cn("rounded-full px-2 py-0.5 text-xs", selected ? "bg-white/20" : "bg-muted text-muted-foreground")}
+              >
+                {label}
+              </span>
+            ))}
+          </span>
+        )}
+      </span>
+      {role === "checkbox" && (
+        <span
+          className={cn(
+            "mt-2.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2",
+            selected ? "border-current" : "border-border",
+          )}
+        >
+          {selected && <Check className="size-4" strokeWidth={3} aria-hidden />}
+        </span>
+      )}
+    </button>
   );
 }
 
