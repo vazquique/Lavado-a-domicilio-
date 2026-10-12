@@ -4,7 +4,7 @@
 > Cambios de alcance se anotan al final en "Decisiones".
 
 ## Quién soy y qué necesito
-Tengo un lavado de autos a domicilio en Zapopan, Jalisco (AV Washes): lavado exterior, aspirado interior, cera y pulido, con precio según el tipo de vehículo. Hoy cotizo a mano por WhatsApp, no cobro anticipo y algunos clientes no se presentan.
+Tengo un lavado de autos a domicilio en Zapopan, Jalisco (JB's Bros; antes se llamaba AV Washes): lavado exterior, aspirado interior, cera y pulido, con precio según el tipo de vehículo. Hoy cotizo a mano por WhatsApp, no cobro anticipo y algunos clientes no se presentan.
 
 No sé programar. Explícame todo en palabras simples. Cuando yo tenga que hacer algo (crear cuentas, copiar llaves, configurar Mercado Pago, Supabase o Vercel), dame los pasos exactos, uno por uno. Manejo casi todo desde el celular.
 
@@ -56,7 +56,7 @@ El producto tiene dos partes:
 - Al iniciar el pago, el lugar queda apartado 30 min. Si no se paga, se libera.
 - Para el anticipo, solo métodos de acreditación inmediata (tarjeta y saldo de Mercado Pago). Efectivo tipo OXXO apagado por defecto.
 - Estados de reserva: pending_payment → confirmed → completed | cancelled | no_show | expired.
-- Folio corto por reserva (ej. AVW-1042).
+- Folio corto por reserva (ej. JBS-1042).
 - Antes de pagar, el cliente acepta la política de cancelación y el aviso de privacidad (textos editables por negocio).
 - Reembolsos manuales desde Mercado Pago; el sistema solo registra el estado.
 - Protección básica contra spam en el formulario (honeypot + límite de intentos por IP).
@@ -121,11 +121,26 @@ El dinero de anticipos y membresías debe llegar a la cuenta de Mercado Pago de 
 Antes de usar credenciales reales, haz una revisión de seguridad (RLS, secretos, webhooks y precios calculados en servidor) y explícame en simple qué revisaste.
 
 ## Listo cuando
-- Desde mi celular puedo abrir la página de AV Washes, cotizar y pagar un anticipo de prueba.
+- Desde mi celular puedo abrir la página de JB's Bros, cotizar y pagar un anticipo de prueba.
 - Veo la reserva confirmada en mi panel y el botón abre WhatsApp con el mensaje correcto.
 - Un cliente de prueba puede suscribirse a una membresía, reservar con crédito y cancelar solo.
 
 El nombre del producto aún no está decidido; déjalo en un solo lugar para cambiarlo fácil.
 
 ## Decisiones
-_(Se irán anotando aquí las respuestas del dueño y los cambios de alcance aprobados.)_
+Respuestas del dueño y cambios de alcance aprobados, en orden.
+
+### 2026-10-12 — Antes del Hito 0
+- El negocio se llama **JB's Bros** (ya no AV Washes). Página: `/jbsbros`. Folios: `JBS-1001`, `JBS-1002`…
+- **No hay dominio propio** todavía. Sin dominio, Resend solo entrega correos al dueño de la cuenta de Resend.
+  Alcanza para los hitos 0 a 3; hay que comprar dominio antes del hito multi-negocio y de membresías.
+- **Vercel**: plan gratis mientras probamos. Antes del primer cobro real se decide entre Vercel Pro (US$20 al mes)
+  u otro servicio que permita uso comercial gratis.
+- **Anticipación**: se puede reservar el mismo día si faltan al menos 2 horas para que empiece la franja.
+  Máximo 30 días hacia adelante (valor por defecto, editable por negocio).
+- **Superadmin**: vazquique@gmail.com (asumido, pendiente de confirmar).
+- Los datos de JB's Bros (WhatsApp, vehículos, servicios, precios, zonas, franjas, anticipo) son de ejemplo,
+  marcados TODO, hasta recibir la tarjeta de precios.
+- Técnicas: Next.js 16 con Cache Components; llaves nuevas de Supabase (publishable/secret); las migraciones
+  se aplican solas con GitHub Actions; las pruebas de base de datos corren en Postgres en memoria (PGlite),
+  sin Docker.
