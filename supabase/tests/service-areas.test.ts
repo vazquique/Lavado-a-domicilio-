@@ -1,5 +1,6 @@
 import type { PGlite } from "@electric-sql/pglite";
 import { beforeAll, describe, expect, test } from "vitest";
+import { EXPLAINER_IDS } from "@/lib/service-explainers";
 import { asRole, createTestDb } from "./test-db";
 
 let db: PGlite;
@@ -52,5 +53,33 @@ describe("service areas and car parts", () => {
       return result.rows;
     });
     expect(rows).toEqual([{ area: "exterior", car_parts: ["lights"] }]);
+  });
+});
+
+describe("service explainers", () => {
+  test("every JB's Bros service has a known plain-language explanation", async () => {
+    const { rows } = await db.query<{ name: string; explainer: string | null }>(
+      "select name, explainer from public.services where business_id = $1",
+      [jbsId],
+    );
+    for (const row of rows) expect(EXPLAINER_IDS, row.name).toContain(row.explainer);
+  });
+
+  test("Lavado normal also vacuums and wipes the dashboard and panels (the owner)", async () => {
+    const { rows } = await db.query<{ car_parts: string[]; description: string; explainer: string }>(
+      "select car_parts, description, explainer from public.services where business_id = $1 and name = 'Lavado normal'",
+      [jbsId],
+    );
+    expect(rows[0]).toEqual({
+      car_parts: ["body", "windows", "wheels", "floors", "dashboard"],
+      description: "Lavado exterior, aspirado y limpieza rápida de paneles y tablero.",
+      explainer: "lavado-completo",
+    });
+  });
+
+  test("explainer ids are short slugs", async () => {
+    await expect(
+      db.query("update public.services set explainer = 'Algo raro!' where business_id = $1", [jbsId]),
+    ).rejects.toThrow(/check/);
   });
 });
