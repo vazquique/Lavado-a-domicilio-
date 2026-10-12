@@ -105,7 +105,8 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
   abrir la red). La documentación de Supabase se puede leer desde
   `raw.githubusercontent.com/supabase/supabase/master/apps/docs/content/`.
 - Para revisar el sitio publicado, lanzar el workflow `smoke.yml` (inputs `url` y `expect`) por la API de
-  GitHub y leer el log: imprime el texto visible de la página. `/api/health` dice qué variables faltan.
+  GitHub y leer el log: imprime el texto visible de la página. `/api/health` dice qué variables faltan y si
+  la llave secreta funciona (`secretKeyWorks`). Si no llega el correo del panel: workflow `diagnose-login.yml`.
   Vercel ya no reporta sus deploys en GitHub: esperar ~1-2 min después del push y confirmar con `smoke.yml`.
 - Cambios con migración: subir primero el commit de la migración, esperar a que `db-migrate.yml` termine bien,
   y luego el código que la usa (si no, la página falla mientras se aplica la migración).

@@ -171,7 +171,7 @@ async function handleRest(req, res, url, table) {
   const values = [];
 
   let sql;
-  if (req.method === "GET") {
+  if (req.method === "GET" || req.method === "HEAD") {
     const limit = url.searchParams.get("limit");
     sql = `select ${selectList(url.searchParams.get("select"))} from public.${quote(table)} t
       ${whereClause(params, values)} ${orderClause(url.searchParams.get("order"))}
@@ -210,6 +210,7 @@ async function handleRest(req, res, url, table) {
     return pgError(res, error);
   }
 
+  if (req.method === "HEAD") return send(res, 200);
   if (req.method !== "GET" && !prefer.includes("return=representation")) return send(res, req.method === "POST" ? 201 : 204);
   if (wantsObject) {
     if (rows.length !== 1) {
@@ -283,7 +284,7 @@ async function handleAuth(req, res, url, route) {
 
   if (route === "otp" && req.method === "POST") {
     const user = await findUser("lower(email)", String(body.email ?? "").toLowerCase());
-    if (!user) return send(res, 422, { code: "otp_disabled", msg: "Signups not allowed for otp" });
+    if (!user) return send(res, 422, { code: 422, error_code: "otp_disabled", msg: "Signups not allowed for otp" });
     lastCodeEmail = user.email;
     console.log(`[auth] login code for ${user.email}: ${LOGIN_CODE} (link token_hash: ${LOGIN_LINK_TOKEN_HASH})`);
     return send(res, 200, {});
@@ -293,11 +294,11 @@ async function handleAuth(req, res, url, route) {
     if (body.token_hash !== undefined) {
       const user = body.token_hash === LOGIN_LINK_TOKEN_HASH && lastCodeEmail ? await findUser("email", lastCodeEmail) : null;
       lastCodeEmail = null;
-      return user ? send(res, 200, sessionFor(user)) : send(res, 403, { code: "otp_expired", msg: "Email link is invalid or has expired" });
+      return user ? send(res, 200, sessionFor(user)) : send(res, 403, { code: 403, error_code: "otp_expired", msg: "Email link is invalid or has expired" });
     }
     const user = body.email ? await findUser("lower(email)", String(body.email).toLowerCase()) : null;
     if (!user || body.token !== LOGIN_CODE) {
-      return send(res, 403, { code: "otp_expired", msg: "Token has expired or is invalid" });
+      return send(res, 403, { code: 403, error_code: "otp_expired", msg: "Token has expired or is invalid" });
     }
     return send(res, 200, sessionFor(user));
   }
@@ -305,13 +306,13 @@ async function handleAuth(req, res, url, route) {
   if (route === "token" && url.searchParams.get("grant_type") === "refresh_token") {
     const userId = String(body.refresh_token ?? "").replace("local-refresh.", "");
     const user = await findUser("id::text", userId);
-    return user ? send(res, 200, sessionFor(user)) : send(res, 400, { code: "refresh_token_not_found", msg: "Invalid Refresh Token" });
+    return user ? send(res, 200, sessionFor(user)) : send(res, 400, { code: 400, error_code: "refresh_token_not_found", msg: "Invalid Refresh Token" });
   }
 
   if (route === "user" && req.method === "GET") {
     const claims = verifyJwt((req.headers.authorization ?? "").replace(/^Bearer /, ""));
     const user = claims ? await findUser("id::text", claims.sub) : null;
-    return user ? send(res, 200, userJson(user)) : send(res, 401, { code: "bad_jwt", msg: "invalid JWT" });
+    return user ? send(res, 200, userJson(user)) : send(res, 401, { code: 401, error_code: "bad_jwt", msg: "invalid JWT" });
   }
 
   if (route === "logout") return send(res, 204);
@@ -320,7 +321,7 @@ async function handleAuth(req, res, url, route) {
     if (caller(req).role !== "service_role") return send(res, 403, { msg: "forbidden" });
     const email = String(body.email ?? "").toLowerCase();
     if (await findUser("lower(email)", email)) {
-      return send(res, 422, { code: "email_exists", msg: "A user with this email address has already been registered" });
+      return send(res, 422, { code: 422, error_code: "email_exists", msg: "A user with this email address has already been registered" });
     }
     const { rows } = await db.query(
       "insert into auth.users (email, email_confirmed_at) values ($1, case when $2 then now() end) returning *",

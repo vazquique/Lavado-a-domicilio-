@@ -182,3 +182,10 @@ Respuestas del dueño y cambios de alcance aprobados, en orden.
   reservas (siguiente hito), que es cuando se guarda algo.
 - Servicios principales que "incluyen todos los extras" (Full detailing): al elegirlos se ocultan los extras y
   nunca se cobran aparte. Se marca por servicio en el panel (aprobado por el dueño).
+
+### 2026-10-12 — Correo de acceso al panel
+- El correo del panel no llegaba: el usuario del dueño nunca se creó y la página igual decía "te llegó un
+  código". Ahora, si el correo no se pudo enviar, la página lo dice ("No pudimos enviar el correo…").
+- Límite de correos de Supabase subido de 2 a 30 por hora (se aplica con la configuración de Auth).
+- Revisión manual: el workflow `diagnose-login.yml` revisa usuario, invitación y SMTP, crea el usuario del
+  dueño invitado si falta y manda un código real. `/api/health` también dice si la llave secreta funciona.

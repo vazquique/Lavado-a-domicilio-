@@ -1,7 +1,7 @@
 // Builds the bodies for PATCH /v1/projects/{ref}/config/auth from the files in this
 // folder. Run by .github/workflows/auth-config.yml; prints JSON to stdout.
 //
-//   node supabase/auth/build-settings.mjs settings   -> site URL, sign-ups, code length, SMTP
+//   node supabase/auth/build-settings.mjs settings   -> site URL, sign-ups, code length, SMTP, email limit
 //   node supabase/auth/build-settings.mjs email      -> Spanish login email (needs custom SMTP)
 import { readFileSync } from "node:fs";
 
@@ -24,6 +24,9 @@ function settings() {
       // Resend's test sender. Replace with an address on our own domain once we have one.
       smtp_admin_email: "onboarding@resend.dev",
       smtp_sender_name: product.name,
+      // Supabase starts at 2 emails per hour for the whole project. Resend's free plan
+      // allows 100 a day; each login sends one.
+      rate_limit_email_sent: 30,
     });
   }
   return body;

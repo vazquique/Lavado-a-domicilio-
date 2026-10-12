@@ -53,6 +53,18 @@ console.log(
 );
 if (!ownerEmail) process.exit(1);
 
+if (!owner && invites.length > 0) {
+  // What the login page does for an invited owner without a user; a trigger links the invite.
+  const create = await fetch(`${base}/auth/v1/admin/users`, {
+    method: "POST",
+    headers: { ...asAdmin, "Content-Type": "application/json" },
+    body: JSON.stringify({ email: ownerEmail, email_confirm: true }),
+  });
+  const failure = create.ok ? "" : mask(await create.text());
+  const membersNow = await rest(`business_members?select=user_id&business_id=eq.${business.id}`);
+  console.log("3b. Create owner user:", create.status, failure, "| members now:", membersNow.length);
+}
+
 const configResponse = await management("/config/auth");
 const config = configResponse.ok ? await configResponse.json() : {};
 hide(config.smtp_pass);

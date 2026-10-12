@@ -15,29 +15,43 @@ export type LoginState = {
 const emailSchema = z.email().trim().toLowerCase().max(254);
 const codeSchema = z.string().trim().regex(/^[0-9]{6,10}$/);
 
+// Invited owners don't have a user yet: create it (already confirmed, since logging in
+// still requires the code sent to this email). A database trigger links the invitation.
+// Returns false when it couldn't check, so a missing user isn't taken for "no access".
+async function ensureInvitedUser(email: string): Promise<boolean> {
+  const admin = createAdminClient();
+  if (!admin) {
+    console.error("SUPABASE_SECRET_KEY is not set; invited users cannot be created.");
+    return false;
+  }
+  const { data: invite, error } = await admin
+    .from("business_invites")
+    .select("email")
+    .eq("email", email)
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.error("Could not read invitations:", error.message);
+    return false;
+  }
+  if (!invite) return true;
+
+  const created = await admin.auth.admin.createUser({ email, email_confirm: true });
+  // "email_exists": the user was already created on an earlier attempt.
+  if (created.error && created.error.code !== "email_exists") {
+    console.error("Could not create the invited user:", created.error.message);
+    return false;
+  }
+  return true;
+}
+
 export async function requestCode(_prev: LoginState, formData: FormData): Promise<LoginState> {
   const parsed = emailSchema.safeParse(formData.get("email"));
   if (!parsed.success) {
     return { step: "email", email: "", message: "Escribe un correo válido.", isError: true };
   }
   const email = parsed.data;
-
-  // Invited owners don't have a user yet: create it (already confirmed, since logging in
-  // still requires the code sent to this email). A database trigger links the invitation.
-  const admin = createAdminClient();
-  if (admin) {
-    const { data: invite } = await admin
-      .from("business_invites")
-      .select("email")
-      .eq("email", email)
-      .limit(1)
-      .maybeSingle();
-    if (invite) {
-      await admin.auth.admin.createUser({ email, email_confirm: true });
-    }
-  } else {
-    console.error("SUPABASE_SECRET_KEY is not set; invited users cannot be created.");
-  }
+  const checkedInvites = await ensureInvitedUser(email);
 
   const supabase = await createSessionClient();
   const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
@@ -46,6 +60,17 @@ export async function requestCode(_prev: LoginState, formData: FormData): Promis
       step: "email",
       email,
       message: "Ya pediste un código hace poco. Espera un minuto y vuelve a intentarlo.",
+      isError: true,
+    };
+  }
+  // "otp_disabled" means this email has no user, so no access (when the invitations could be
+  // checked). Any other error means the email couldn't be sent: say so instead of "te llegó".
+  if (error && !(error.code === "otp_disabled" && checkedInvites)) {
+    console.error("Could not send the login code:", error.status, error.code, error.message);
+    return {
+      step: "email",
+      email,
+      message: "No pudimos enviar el correo. Intenta de nuevo en unos minutos.",
       isError: true,
     };
   }

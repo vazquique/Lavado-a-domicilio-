@@ -59,6 +59,6 @@ jobs:
 
           node -e '
             const r = require(process.env.RUNNER_TEMP + "/response.json");
-            const keys = ["site_url", "uri_allow_list", "disable_signup", "mailer_otp_length", "smtp_host", "smtp_admin_email", "smtp_sender_name", "mailer_subjects_magic_link"];
+            const keys = ["site_url", "uri_allow_list", "disable_signup", "mailer_otp_length", "smtp_host", "smtp_admin_email", "smtp_sender_name", "rate_limit_email_sent", "mailer_subjects_magic_link"];
             for (const k of keys) console.log(k + ":", JSON.stringify(r[k]));
           '
