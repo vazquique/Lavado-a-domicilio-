@@ -1,18 +1,14 @@
--- First business: JB's Bros (Zapopan, Jalisco).
--- Everything marked TODO is example data until the owner sends the real values
--- (price card photo). After the panel exists, the owner edits this from there.
+-- First business: JB's Bros (zona norte de Zapopan, Jalisco).
+-- Data from the owner (2026-10-12). Items marked TODO are still pending;
+-- once the panel exists, the owner edits everything from there.
 
 do $$
 declare
   biz uuid;
-  v_auto uuid;
-  v_suv uuid;
-  v_pickup uuid;
-  s_exterior uuid;
-  s_package uuid;
-  s_vacuum uuid;
-  s_wax uuid;
-  s_polish uuid;
+  v_car uuid;
+  v_mid uuid;
+  v_large uuid;
+  s_wash uuid;
 begin
   insert into public.businesses (
     slug, name, whatsapp_phone, folio_prefix, deposit_type, deposit_value,
@@ -21,11 +17,11 @@ begin
   ) values (
     'jbsbros',
     'JB''s Bros',
-    null, -- TODO: WhatsApp del negocio (10 dígitos)
+    '3314596017',
     'JBS',
-    'percent', 30, -- TODO: anticipo real
-    '{1,2,3,4,5,6}', -- TODO: días laborales (lunes a sábado de ejemplo)
-    120, -- confirmado: mismo día con 2 horas de anticipación
+    'percent', 50,
+    '{1,2,3,4,5,6,7}', -- lunes a domingo
+    120, -- mismo día con 2 horas de anticipación
     30,
     -- TODO: revisar texto de política de cancelación
     'Puedes cancelar o cambiar tu cita sin costo hasta 24 horas antes. '
@@ -38,48 +34,45 @@ begin
   )
   returning id into biz;
 
-  -- TODO: tipos de vehículo reales (3 de la tarjeta de precios)
   insert into public.vehicle_types (business_id, name, sort_order)
-    values (biz, 'Auto (sedán o hatchback)', 1) returning id into v_auto;
+    values (biz, 'Carro normal', 1) returning id into v_car;
   insert into public.vehicle_types (business_id, name, sort_order)
-    values (biz, 'SUV o camioneta', 2) returning id into v_suv;
+    values (biz, 'Camioneta mediana', 2) returning id into v_mid;
   insert into public.vehicle_types (business_id, name, sort_order)
-    values (biz, 'Pickup o van', 3) returning id into v_pickup;
+    values (biz, 'Camioneta grande', 3) returning id into v_large;
 
-  -- TODO: servicios y precios reales
-  insert into public.services (business_id, name, description, kind, sort_order)
-    values (biz, 'Lavado exterior', 'Carrocería, rines, llantas y vidrios.', 'base', 1)
-    returning id into s_exterior;
-  insert into public.services (business_id, name, description, kind, sort_order)
-    values (biz, 'Paquete completo', 'Lavado exterior, aspirado interior y cera.', 'base', 2)
-    returning id into s_package;
-  insert into public.services (business_id, name, description, kind, sort_order)
-    values (biz, 'Aspirado interior', 'Asientos, alfombras y cajuela.', 'extra', 3)
-    returning id into s_vacuum;
-  insert into public.services (business_id, name, description, kind, sort_order)
-    values (biz, 'Cera', 'Brillo y protección para la pintura.', 'extra', 4)
-    returning id into s_wax;
-  insert into public.services (business_id, name, description, kind, sort_order)
-    values (biz, 'Pulido', 'Quita rayones finos y opacidad.', 'extra', 5)
-    returning id into s_polish;
+  insert into public.services (business_id, name, kind, sort_order)
+    values (biz, 'Lavado normal', 'base', 1)
+    returning id into s_wash;
 
   insert into public.service_prices (business_id, service_id, vehicle_type_id, price_cents) values
-    (biz, s_exterior, v_auto, 15000), (biz, s_exterior, v_suv, 18000), (biz, s_exterior, v_pickup, 22000),
-    (biz, s_package, v_auto, 35000), (biz, s_package, v_suv, 42000), (biz, s_package, v_pickup, 50000),
-    (biz, s_vacuum, v_auto, 8000), (biz, s_vacuum, v_suv, 10000), (biz, s_vacuum, v_pickup, 12000),
-    (biz, s_wax, v_auto, 12000), (biz, s_wax, v_suv, 15000), (biz, s_wax, v_pickup, 18000),
-    (biz, s_polish, v_auto, 40000), (biz, s_polish, v_suv, 50000), (biz, s_polish, v_pickup, 60000);
+    (biz, s_wash, v_car, 23000),
+    (biz, s_wash, v_mid, 27000),
+    (biz, s_wash, v_large, 30000);
 
-  -- TODO: zonas y recargos reales
+  -- TODO: precios de los extras. Un extra se ofrece en el cotizador hasta que tenga precio.
+  insert into public.services (business_id, name, kind, sort_order) values
+    (biz, 'Descontaminado químico y mecánico de pintura', 'extra', 10),
+    (biz, 'Descontaminado y quita gotas para vidrios', 'extra', 11),
+    (biz, 'Restauración de plásticos exteriores', 'extra', 12),
+    (biz, 'Detallado de rines y llantas', 'extra', 13),
+    (biz, 'Protección cerámica rápida con SiO2', 'extra', 14),
+    (biz, 'Tratamiento cerámico', 'extra', 15),
+    (biz, 'Restauración de faros', 'extra', 16),
+    (biz, 'Tallado de asientos y suelos', 'extra', 17),
+    (biz, 'Restauración e hidratación de plásticos interiores', 'extra', 18),
+    (biz, 'Detallado general de interiores', 'extra', 19),
+    (biz, 'Detallado general de exteriores', 'extra', 20),
+    (biz, 'Full detailing', 'extra', 21), -- TODO: ¿paquete principal o extra?
+    (biz, 'Hidratación de cueros', 'extra', 22);
+
+  -- TODO: colonias exactas y recargos fuera de esta zona.
   insert into public.zones (business_id, name, surcharge_cents, sort_order) values
-    (biz, 'Zapopan', 0, 1),
-    (biz, 'Guadalajara', 0, 2),
-    (biz, 'Tlaquepaque', 5000, 3),
-    (biz, 'Tlajomulco', 8000, 4);
+    (biz, 'Zapopan (zona norte)', 0, 1);
 
-  -- TODO: franjas y cupos reales
+  -- Horario de 9 a 6. TODO: cupo real por franja.
   insert into public.time_slots (business_id, name, start_time, end_time, capacity, sort_order) values
     (biz, 'Mañana', '09:00', '13:00', 2, 1),
-    (biz, 'Tarde', '14:00', '18:00', 2, 2);
+    (biz, 'Tarde', '13:00', '18:00', 2, 2);
 end;
 $$;

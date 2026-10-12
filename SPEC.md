@@ -139,8 +139,16 @@ Respuestas del dueño y cambios de alcance aprobados, en orden.
 - **Anticipación**: se puede reservar el mismo día si faltan al menos 2 horas para que empiece la franja.
   Máximo 30 días hacia adelante (valor por defecto, editable por negocio).
 - **Superadmin**: vazquique@gmail.com (asumido, pendiente de confirmar).
-- Los datos de JB's Bros (WhatsApp, vehículos, servicios, precios, zonas, franjas, anticipo) son de ejemplo,
-  marcados TODO, hasta recibir la tarjeta de precios.
 - Técnicas: Next.js 16 con Cache Components; llaves nuevas de Supabase (publishable/secret); las migraciones
   se aplican solas con GitHub Actions; las pruebas de base de datos corren en Postgres en memoria (PGlite),
   sin Docker.
+
+### 2026-10-12 — Datos de JB's Bros (Hito 0)
+- WhatsApp: 33 1459 6017. Anticipo: 50%.
+- Vehículos: Carro normal, Camioneta mediana, Camioneta grande.
+- Servicio principal: Lavado normal ($230 / $270 / $300).
+- 13 extras, todavía sin precio. Un extra sin precio no se ofrece en el cotizador.
+  Pendiente: si "Full detailing" es paquete principal o extra.
+- Zona: Zapopan (zona norte), sin recargo. Para otras zonas, botón de WhatsApp. Pendiente: colonias y recargos.
+- Lunes a domingo de 9:00 a 18:00. Franjas: Mañana 9–13 y Tarde 13–18. Pendiente: cupo real (por ahora 2).
+- El dueño quiere editar estos datos él mismo (panel del negocio, Hito 3). Pendiente: si se adelanta.

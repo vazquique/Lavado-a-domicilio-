@@ -8,6 +8,7 @@ export type Business = {
   brandColor: string;
   depositType: "percent" | "fixed";
   depositValue: number;
+  workingDays: number[];
 };
 
 export type VehicleType = { id: string; name: string };
@@ -52,7 +53,7 @@ export async function getBusinessCatalog(
 
   const { data: business, error } = await supabase
     .from("businesses")
-    .select("id, slug, name, whatsapp_phone, brand_color, deposit_type, deposit_value")
+    .select("id, slug, name, whatsapp_phone, brand_color, deposit_type, deposit_value, working_days")
     .eq("slug", slug)
     .eq("active", true)
     .maybeSingle();
@@ -103,6 +104,7 @@ export async function getBusinessCatalog(
       brandColor: business.brand_color,
       depositType: business.deposit_type,
       depositValue: business.deposit_value,
+      workingDays: business.working_days,
     },
     vehicleTypes: vehicleTypes.data ?? [],
     services: services.data ?? [],
@@ -124,4 +126,14 @@ export async function getBusinessCatalog(
       capacity: row.capacity,
     })),
   };
+}
+
+// Lowest and highest price of a service across vehicle types, or null if it has no price yet.
+export function priceRange(
+  serviceId: string,
+  prices: ServicePrice[],
+): { min: number; max: number } | null {
+  const amounts = prices.filter((price) => price.serviceId === serviceId).map((price) => price.priceCents);
+  if (amounts.length === 0) return null;
+  return { min: Math.min(...amounts), max: Math.max(...amounts) };
 }

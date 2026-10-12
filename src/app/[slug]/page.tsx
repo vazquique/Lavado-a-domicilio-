@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { getBusinessCatalog, type BusinessCatalog } from "@/lib/catalog";
+import { getBusinessCatalog, priceRange, type BusinessCatalog } from "@/lib/catalog";
 import { formatMXN } from "@/lib/money";
+import { formatWorkingDays } from "@/lib/schedule";
 import { createPublicClient } from "@/lib/supabase/public";
 import { formatClockTime } from "@/lib/time";
+import { whatsAppLink } from "@/lib/whatsapp";
 
 // Hito 0: read-only preview that proves the database connection and the
 // business data. Hito 1 replaces it with the quote and booking flow.
@@ -40,10 +42,16 @@ function CatalogPreview({ catalog }: { catalog: BusinessCatalog }) {
   const priceByKey = new Map(
     prices.map((price) => [`${price.serviceId}:${price.vehicleTypeId}`, price.priceCents]),
   );
+  const baseServices = services.filter((service) => service.kind === "base");
+  const extras = services.filter((service) => service.kind === "extra");
   const deposit =
     business.depositType === "percent"
       ? `${business.depositValue}% del total`
       : formatMXN(business.depositValue);
+  const askZoneLink = whatsAppLink(
+    business.whatsappPhone,
+    `Hola ${business.name}, quiero agendar un lavado. ¿Llegan a mi zona? Estoy en: `,
+  );
 
   return (
     <div className="space-y-6">
@@ -56,29 +64,47 @@ function CatalogPreview({ catalog }: { catalog: BusinessCatalog }) {
         Vista previa: así quedaron guardados los datos. Pronto aquí estará el cotizador.
       </p>
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Precios</h2>
-        {vehicleTypes.map((vehicle) => (
-          <div key={vehicle.id} className="rounded-xl bg-white p-4 shadow-sm">
-            <h3 className="font-medium">{vehicle.name}</h3>
-            <ul className="mt-2 divide-y divide-gray-100 text-sm">
-              {services.map((service) => {
-                const price = priceByKey.get(`${service.id}:${vehicle.id}`);
-                if (price === undefined) return null;
-                return (
-                  <li key={service.id} className="flex justify-between gap-4 py-2">
-                    <span>
-                      {service.name}
-                      {service.kind === "extra" && <span className="text-gray-500"> (extra)</span>}
-                    </span>
-                    <span className="font-medium">{formatMXN(price)}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
-      </section>
+      {baseServices.map((service) => (
+        <section key={service.id} className="rounded-xl bg-white p-4 shadow-sm">
+          <h2 className="text-lg font-semibold">{service.name}</h2>
+          <ul className="mt-2 divide-y divide-gray-100 text-sm">
+            {vehicleTypes.map((vehicle) => {
+              const price = priceByKey.get(`${service.id}:${vehicle.id}`);
+              return (
+                <li key={vehicle.id} className="flex justify-between gap-4 py-2">
+                  <span>{vehicle.name}</span>
+                  <span className="font-medium">
+                    {price === undefined ? "Precio por definir" : formatMXN(price)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
+
+      {extras.length > 0 && (
+        <section className="rounded-xl bg-white p-4 shadow-sm">
+          <h2 className="text-lg font-semibold">Extras</h2>
+          <ul className="mt-2 divide-y divide-gray-100 text-sm">
+            {extras.map((service) => {
+              const range = priceRange(service.id, prices);
+              return (
+                <li key={service.id} className="flex justify-between gap-4 py-2">
+                  <span>{service.name}</span>
+                  <span className="shrink-0 text-right font-medium">
+                    {range === null
+                      ? <span className="font-normal text-gray-500">Precio por definir</span>
+                      : range.min === range.max
+                        ? formatMXN(range.min)
+                        : `${formatMXN(range.min)} a ${formatMXN(range.max)}`}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       <section className="rounded-xl bg-white p-4 shadow-sm">
         <h2 className="text-lg font-semibold">Zonas</h2>
@@ -90,10 +116,19 @@ function CatalogPreview({ catalog }: { catalog: BusinessCatalog }) {
             </li>
           ))}
         </ul>
+        {askZoneLink && (
+          <a
+            href={askZoneLink}
+            className="mt-3 block rounded-lg bg-green-600 px-4 py-3 text-center font-medium text-white"
+          >
+            ¿Tu zona no aparece? Pregúntanos por WhatsApp
+          </a>
+        )}
       </section>
 
       <section className="rounded-xl bg-white p-4 shadow-sm">
         <h2 className="text-lg font-semibold">Horarios</h2>
+        <p className="mt-1 text-sm text-gray-600">{formatWorkingDays(business.workingDays)}</p>
         <ul className="mt-2 divide-y divide-gray-100 text-sm">
           {timeSlots.map((slot) => (
             <li key={slot.id} className="flex justify-between gap-4 py-2">

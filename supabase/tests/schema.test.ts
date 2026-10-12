@@ -66,7 +66,7 @@ describe("schema", () => {
     expect(rows).toEqual([]);
   });
 
-  test("JB's Bros starts with a complete price table", async () => {
+  test("JB's Bros starts with its catalog", async () => {
     const counts = await one<Record<string, number>>(
       `select
          (select count(*)::int from public.vehicle_types where business_id = $1) as vehicle_types,
@@ -76,7 +76,7 @@ describe("schema", () => {
          (select count(*)::int from public.time_slots where business_id = $1) as time_slots`,
       [jbsId],
     );
-    expect(counts).toEqual({ vehicle_types: 3, services: 5, prices: 15, zones: 4, time_slots: 2 });
+    expect(counts).toEqual({ vehicle_types: 3, services: 14, prices: 3, zones: 1, time_slots: 2 });
   });
 });
 
@@ -89,7 +89,7 @@ describe("public visitor (anon)", () => {
       );
       return rows.map((row) => row.name);
     });
-    expect(names).toContain("Lavado exterior");
+    expect(names).toContain("Lavado normal");
   });
 
   test("cannot read bookings", async () => {
