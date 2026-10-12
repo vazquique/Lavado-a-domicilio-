@@ -1,0 +1,131 @@
+# SPEC — MVP de cotizador, reservas con anticipo y membresías
+
+> Documento original del dueño del producto. Es la fuente de verdad del alcance.
+> Cambios de alcance se anotan al final en "Decisiones".
+
+## Quién soy y qué necesito
+Tengo un lavado de autos a domicilio en Zapopan, Jalisco (AV Washes): lavado exterior, aspirado interior, cera y pulido, con precio según el tipo de vehículo. Hoy cotizo a mano por WhatsApp, no cobro anticipo y algunos clientes no se presentan.
+
+No sé programar. Explícame todo en palabras simples. Cuando yo tenga que hacer algo (crear cuentas, copiar llaves, configurar Mercado Pago, Supabase o Vercel), dame los pasos exactos, uno por uno. Manejo casi todo desde el celular.
+
+Primero lo usará mi negocio y después lo venderé a otros lavadores y detalladores a domicilio en México. Por eso la base de datos debe ser multi-negocio desde el día uno, aunque al inicio solo exista el mío.
+
+El producto tiene dos partes:
+1. Cotizador + reserva con anticipo: el cliente elige vehículo y servicios, ve el precio al instante, elige fecha y franja, paga un anticipo con Mercado Pago y confirma por WhatsApp.
+2. Membresías: el cliente paga una suscripción mensual (ej. 2 lavados al mes) y reserva con sus créditos, sin anticipo.
+
+## Cómo trabajar
+- Guarda este documento como SPEC.md y crea un CLAUDE.md con las convenciones y comandos del proyecto.
+- Antes de programar, hazme como máximo 5 preguntas que de verdad bloqueen y propón un plan por hitos. Espera mi OK.
+- Para los datos de mi negocio, pídeme:
+  - WhatsApp del negocio.
+  - Tipos de vehículo (uso 3 en mi tarjeta de precios).
+  - Servicios y precios por tipo de vehículo.
+  - Zonas y recargos.
+  - Franjas y cupo por franja.
+  - Porcentaje de anticipo.
+  Si te mando foto de mi tarjeta de precios, sácalos de ahí. Lo que falte, ponlo como ejemplo marcado TODO.
+- Trabaja un hito a la vez. Al terminar cada uno:
+  - Lint, typecheck y tests deben pasar.
+  - Haz commit.
+  - Dame un link de Vercel que pueda abrir en mi celular.
+  - Dame una lista corta de qué probar y qué debería pasar.
+  Luego para y espera mi OK.
+- Revisa la documentación oficial actual de Mercado Pago, Supabase y Next.js antes de integrarlos.
+- Simple antes que ingenioso. No agregues nada fuera de alcance sin preguntarme.
+- Evita cosas que tenga que instalar o correr en mi computadora (como Docker); prefiere servicios en la nube.
+- Mantén los costos en cero mientras se pueda. Si un plan gratuito no permite uso comercial o tiene un límite que me afecte, avísame antes de lanzar.
+- Háblame en español. Interfaz en español de México; código en inglés.
+
+## Stack
+- Next.js (App Router), TypeScript, Tailwind y shadcn/ui.
+- Supabase: Postgres, Auth con magic link, Storage para logos y RLS en todas las tablas. Configura Resend como SMTP de Supabase Auth para que los magic links lleguen.
+- Mercado Pago: Checkout Pro para anticipos y Suscripciones para membresías. Usa credenciales de prueba hasta que yo diga.
+- Resend para correos.
+- Vercel para deploy.
+- Zod para validar y Vitest para tests.
+
+## Reglas de negocio
+- MXN con formato es-MX. Zona horaria America/Mexico_City.
+- Tipos de vehículo editables por negocio.
+- Cada servicio tiene precio por tipo de vehículo. Se marca como "base" (servicio o paquete principal) o "extra" (se agrega a uno base). El cliente elige 1 base y 0 o más extras.
+- Zonas de cobertura con recargo opcional. Si la zona del cliente no está, mostrar botón "Pregúntanos por WhatsApp".
+- Agenda por franjas (ej. Mañana / Tarde) con cupo por franja, días laborales y fechas bloqueadas.
+- Anticipo por negocio: porcentaje o monto fijo. El saldo se paga el día del servicio.
+- El precio SIEMPRE se calcula en el servidor; nunca confíes en montos que mande el navegador.
+- Al iniciar el pago, el lugar queda apartado 30 min. Si no se paga, se libera.
+- Para el anticipo, solo métodos de acreditación inmediata (tarjeta y saldo de Mercado Pago). Efectivo tipo OXXO apagado por defecto.
+- Estados de reserva: pending_payment → confirmed → completed | cancelled | no_show | expired.
+- Folio corto por reserva (ej. AVW-1042).
+- Antes de pagar, el cliente acepta la política de cancelación y el aviso de privacidad (textos editables por negocio).
+- Reembolsos manuales desde Mercado Pago; el sistema solo registra el estado.
+- Protección básica contra spam en el formulario (honeypot + límite de intentos por IP).
+
+## Parte 1: cotizador + reserva (primero)
+Página pública /[slug], mobile-first (casi todos llegan desde WhatsApp o Facebook en el celular):
+1. El cliente elige vehículo, servicios (ve el precio al instante), zona y fecha con franja disponible. Luego captura nombre, celular de 10 dígitos, dirección, referencias y email opcional.
+2. Resumen: total, anticipo y saldo.
+3. Pago del anticipo con Checkout Pro.
+4. El webhook de Mercado Pago confirma la reserva (verifica la firma y que sea idempotente). La página de regreso consulta el estado; no confía solo en la redirección.
+5. Página de éxito con botón wa.me que abre WhatsApp al negocio con un mensaje prellenado: folio, fecha, franja, dirección, vehículo, servicios, total, anticipo pagado y saldo. Usa formato internacional (52 + 10 dígitos) y verifica que abra bien con números de México.
+6. Correo al negocio por cada reserva confirmada.
+7. Metadatos Open Graph por negocio para que el link se vea bien al compartirlo en WhatsApp.
+
+Panel del negocio (login con magic link), pensado para usarse desde el celular:
+- Reservas de hoy y próximas. Acciones: completar, no-show, saldo pagado, cancelar.
+- Botón wa.me en cada reserva para mandarle al cliente un recordatorio prellenado.
+- Reservas manuales (las que llegan por teléfono o WhatsApp), que también ocupan cupo.
+- Editar:
+  - Precios (vehículo × servicio).
+  - Zonas, franjas y cupos.
+  - Días laborales y fechas bloqueadas.
+  - Anticipo y textos legales.
+  - WhatsApp, nombre, logo y color.
+
+Superadmin (solo yo):
+- Crear negocios, asignar slug e invitar al dueño por email.
+- Ver por negocio las reservas confirmadas por semana y los miembros activos.
+
+## Parte 2: membresías (cuando la Parte 1 funcione)
+- El negocio crea planes: nombre, servicios incluidos, lavados por mes y precio por tipo de vehículo.
+- En /[slug]/membresias el cliente elige plan y vehículo y se suscribe con cobro recurrente de Mercado Pago. Email obligatorio.
+- Cada cobro aprobado (avisado por webhook) recarga los créditos del periodo. Los créditos no se acumulan de un mes a otro.
+- Reservar con crédito usa el mismo flujo, sin anticipo. Extras y recargos fuera del plan se cobran como saldo.
+- Si un cobro falla o se cancela, la membresía se pausa y no puede usar créditos.
+- Portal del miembro (magic link): créditos restantes, reservar, próximo cobro y cancelar en un clic.
+- En el panel: miembros activos y pausados, créditos usados e ingreso mensual recurrente.
+
+## Pagos por negocio
+El dinero de anticipos y membresías debe llegar a la cuenta de Mercado Pago de CADA negocio, no a la mía.
+- En los primeros hitos usa mis credenciales desde variables de entorno, pero deja el modelo listo para credenciales por negocio.
+- En el hito multi-negocio, revisa la documentación oficial. Si la vinculación de cuentas por OAuth está disponible en México para Checkout Pro y Suscripciones, úsala. Si no, guarda el access token de cada negocio cifrado en el servidor.
+
+## Fuera de alcance
+- API de WhatsApp o bots.
+- App nativa.
+- Mapas o rutas.
+- Empleados o nómina.
+- Facturación CFDI automática.
+- Inventario.
+- Otros idiomas.
+- El cobro de mi suscripción a los negocios (lo cobro a mano con links de pago).
+
+## Hitos sugeridos
+0. Repo, proyecto en Supabase, esquema, migraciones, RLS, datos de mi negocio y primer deploy en Vercel.
+1. Página pública y cotizador sin pago, con tests de precios y disponibilidad.
+2. Anticipo con Mercado Pago de prueba: webhook, apartado y expiración, página de éxito con wa.me y correo.
+3. Panel del negocio.
+4. Multi-negocio: superadmin, credenciales por negocio y Open Graph.
+5. Membresías, con tests de créditos.
+
+Antes de usar credenciales reales, haz una revisión de seguridad (RLS, secretos, webhooks y precios calculados en servidor) y explícame en simple qué revisaste.
+
+## Listo cuando
+- Desde mi celular puedo abrir la página de AV Washes, cotizar y pagar un anticipo de prueba.
+- Veo la reserva confirmada en mi panel y el botón abre WhatsApp con el mensaje correcto.
+- Un cliente de prueba puede suscribirse a una membresía, reservar con crédito y cancelar solo.
+
+El nombre del producto aún no está decidido; déjalo en un solo lugar para cambiarlo fácil.
+
+## Decisiones
+_(Se irán anotando aquí las respuestas del dueño y los cambios de alcance aprobados.)_
