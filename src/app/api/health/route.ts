@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { getSupabaseSecretKey } from "@/lib/env";
+import { getMercadoPagoConfig } from "@/lib/mercadopago";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // What the secret key looks like (never its value), to tell a wrong paste from a wrong project.
@@ -11,8 +12,31 @@ function keyKind(key: string | null) {
   return "other";
 }
 
-// Says which settings are present and whether the secret key is accepted (never their
-// values), so the setup can be checked from outside after a deploy.
+// Whether Mercado Pago accepts the access token, and whether it belongs to a test account
+// (the owner asked for test credentials until he says otherwise).
+async function mercadoPagoStatus() {
+  const config = getMercadoPagoConfig();
+  if (!config) return { mercadoPago: false };
+  const tokenKind = /^(TEST|APP_USR)-[\w-]+$/.test(config.accessToken) ? config.accessToken.split("-")[0] : "other";
+  try {
+    const response = await fetch(`${config.apiUrl}/users/me`, {
+      headers: { Authorization: `Bearer ${config.accessToken}` },
+      signal: AbortSignal.timeout(5_000),
+      cache: "no-store",
+    });
+    const me: { email?: unknown; tags?: unknown } | null = response.ok ? await response.json() : null;
+    const testAccount =
+      tokenKind === "TEST" ||
+      (Array.isArray(me?.tags) && me.tags.includes("test_user")) ||
+      (typeof me?.email === "string" && me.email.endsWith("@testuser.com"));
+    return { mercadoPago: true, mercadoPagoTokenKind: tokenKind, mercadoPagoWorks: response.ok, mercadoPagoTestAccount: testAccount };
+  } catch {
+    return { mercadoPago: true, mercadoPagoTokenKind: tokenKind, mercadoPagoWorks: false };
+  }
+}
+
+// Says which settings are present and whether the keys are accepted (never their values),
+// so the setup can be checked from outside after a deploy.
 export async function GET() {
   await connection();
   const admin = createAdminClient();
@@ -25,5 +49,7 @@ export async function GET() {
     secretKey: Boolean(process.env.SUPABASE_SECRET_KEY),
     secretKeyKind: keyKind(getSupabaseSecretKey()),
     secretKeyWorks,
+    ...(await mercadoPagoStatus()),
+    resend: Boolean(process.env.RESEND_API_KEY?.trim()),
   });
 }

@@ -1,13 +1,20 @@
 "use server";
 
-import { isSlotBookable } from "@/lib/availability";
-import { getBookingData, depositLabel } from "@/lib/booking-data";
+import { createHmac } from "node:crypto";
+import { headers } from "next/headers";
+import { z } from "zod";
+import { isSlotBookable, type SlotRule } from "@/lib/availability";
+import { getBookingData, depositLabel, type BookingData } from "@/lib/booking-data";
 import { bookingRequestSchema, type BookingRequest } from "@/lib/booking-request";
 import { formatLongDate } from "@/lib/dates";
+import { getSupabaseSecretKey } from "@/lib/env";
+import { createCheckout, getMercadoPagoConfig } from "@/lib/mercadopago";
 import { formatMXN } from "@/lib/money";
 import { firstError } from "@/lib/panel/schemas";
+import { amountDueNow, paymentChoices, PAYMENT_OPTIONS, type PaymentChoice } from "@/lib/payment-options";
 import { calculateQuote, type Quote } from "@/lib/quote";
 import { quoteRequestMessage } from "@/lib/quote-message";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createPublicClient } from "@/lib/supabase/public";
 import { whatsAppLink } from "@/lib/whatsapp";
 
@@ -18,6 +25,9 @@ export type QuoteSummary = {
   depositLabel: string;
   customer: { name: string; phone: string; address: string; references: string; email: string | null };
   whatsappUrl: string | null;
+  // Mercado Pago is set up: the customer pays here. Otherwise they book by WhatsApp.
+  payOnline: boolean;
+  choices: PaymentChoice[];
 };
 
 export type PrepareQuoteResult = { ok: true; summary: QuoteSummary } | { ok: false; message: string };
@@ -29,9 +39,21 @@ const QUOTE_ERRORS = {
   zone: "Esa colonia ya no está en la lista. Elige otra o pregúntanos por WhatsApp.",
 } as const;
 
-// Builds the official summary on the server: prices come from the database and the
-// slot is checked again, so nothing the browser sends can change an amount.
-export async function prepareQuote(request: BookingRequest): Promise<PrepareQuoteResult> {
+const SLOT_GONE = "Ese horario ya no está disponible. Elige otro, por favor.";
+
+type CheckedRequest =
+  | {
+      ok: true;
+      input: z.output<typeof bookingRequestSchema>;
+      data: BookingData;
+      quote: Quote;
+      slot: SlotRule;
+    }
+  | { ok: false; message: string };
+
+// Prices come from the database and the slot is checked again, so nothing the browser
+// sends can change an amount.
+async function checkRequest(request: BookingRequest, now: Date): Promise<CheckedRequest> {
   const parsed = bookingRequestSchema.safeParse(request);
   if (!parsed.success) return { ok: false, message: firstError(parsed.error) };
   const input = parsed.data;
@@ -39,7 +61,6 @@ export async function prepareQuote(request: BookingRequest): Promise<PrepareQuot
   const supabase = createPublicClient();
   if (!supabase) return { ok: false, message: "Estamos en mantenimiento. Intenta en unos minutos." };
 
-  const now = new Date();
   const data = await getBookingData(supabase, input.slug, now);
   if (!data) return { ok: false, message: "Este negocio ya no está disponible." };
 
@@ -63,20 +84,29 @@ export async function prepareQuote(request: BookingRequest): Promise<PrepareQuot
       now,
       unitsNeeded: result.quote.capacityUnits,
     });
-  if (!slot || !available) {
-    return { ok: false, message: "Ese horario ya no está disponible. Elige otro, por favor." };
-  }
+  if (!slot || !available) return { ok: false, message: SLOT_GONE };
+
+  return { ok: true, input, data, quote: result.quote, slot };
+}
+
+// Builds the official summary on the server.
+export async function prepareQuote(request: BookingRequest): Promise<PrepareQuoteResult> {
+  const checked = await checkRequest(request, new Date());
+  if (!checked.ok) return checked;
+  const { input, data, quote, slot } = checked;
 
   const summary: Omit<QuoteSummary, "whatsappUrl"> = {
-    quote: result.quote,
+    quote,
     dateLabel: formatLongDate(input.date),
     slot: { name: slot.name, startTime: slot.startTime, endTime: slot.endTime },
     depositLabel: depositLabel(data.catalog.deposit, formatMXN),
     customer: input.customer,
+    payOnline: getMercadoPagoConfig() !== null && createAdminClient() !== null,
+    choices: paymentChoices(quote),
   };
   const message = quoteRequestMessage({
     businessName: data.business.name,
-    quote: result.quote,
+    quote,
     date: input.date,
     slot: summary.slot,
     customer: input.customer,
@@ -84,4 +114,121 @@ export async function prepareQuote(request: BookingRequest): Promise<PrepareQuot
   });
 
   return { ok: true, summary: { ...summary, whatsappUrl: whatsAppLink(data.business.whatsappPhone, message) } };
+}
+
+const checkoutChoiceSchema = z.object({
+  option: z.enum(PAYMENT_OPTIONS, { error: "Elige cuánto quieres pagar." }),
+  acceptTerms: z.literal(true, { error: "Acepta la política de cancelación y el aviso de privacidad para continuar." }),
+});
+
+export type CheckoutChoice = z.input<typeof checkoutChoiceSchema>;
+
+export type StartCheckoutResult = { ok: true; checkoutUrl: string } | { ok: false; message: string };
+
+// Payments started per IP before we ask the customer to wait (spam protection).
+const ATTEMPTS_PER_IP = 10;
+const ATTEMPTS_WINDOW_MINUTES = 60;
+
+async function requestOrigin(): Promise<string> {
+  const list = await headers();
+  const host = list.get("x-forwarded-host") ?? list.get("host") ?? "localhost:3000";
+  const local = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host);
+  const proto = list.get("x-forwarded-proto")?.split(",")[0]?.trim() || (local ? "http" : "https");
+  return `${proto}://${host}`;
+}
+
+// Keyed hash of the visitor's IP: enough to count attempts without storing the IP itself.
+async function ipHash(key: string): Promise<string> {
+  const list = await headers();
+  const ip = list.get("x-forwarded-for")?.split(",")[0]?.trim() || list.get("x-real-ip") || "unknown";
+  return createHmac("sha256", key).update(ip).digest("hex");
+}
+
+// Holds the places for 30 minutes and opens Mercado Pago's checkout for the deposit or
+// the whole total. Returns the link the browser goes to.
+export async function startCheckout(request: BookingRequest, choice: CheckoutChoice): Promise<StartCheckoutResult> {
+  const parsedChoice = checkoutChoiceSchema.safeParse(choice);
+  if (!parsedChoice.success) return { ok: false, message: firstError(parsedChoice.error) };
+
+  const config = getMercadoPagoConfig();
+  const admin = createAdminClient();
+  const secretKey = getSupabaseSecretKey();
+  if (!config || !admin || !secretKey) {
+    return { ok: false, message: "Por ahora no podemos cobrar en línea. Envíanos tu pedido por WhatsApp." };
+  }
+
+  const now = new Date();
+  const checked = await checkRequest(request, now);
+  if (!checked.ok) return checked;
+  const { input, data, quote, slot } = checked;
+
+  const amountCents = amountDueNow(quote, parsedChoice.data.option);
+  if (amountCents === null || amountCents < 100) {
+    return { ok: false, message: "Elige cuánto quieres pagar." };
+  }
+
+  const { data: allowed, error: attemptError } = await admin.rpc("register_booking_attempt", {
+    p_ip_hash: await ipHash(secretKey),
+    p_limit: ATTEMPTS_PER_IP,
+    p_window_minutes: ATTEMPTS_WINDOW_MINUTES,
+  });
+  if (attemptError) throw attemptError;
+  if (allowed !== true) {
+    return { ok: false, message: "Hiciste muchos intentos. Espera un rato o escríbenos por WhatsApp." };
+  }
+
+  const { data: created, error: createError } = await admin.rpc("create_online_booking", {
+    p_booking: {
+      business_id: data.business.id,
+      service_date: input.date,
+      time_slot_id: slot.id,
+      vehicle_type_id: quote.vehicle.id,
+      zone_id: quote.zone?.id ?? null,
+      capacity_units: quote.capacityUnits,
+      customer_name: input.customer.name,
+      customer_phone: input.customer.phone,
+      customer_email: input.customer.email,
+      address: input.customer.address,
+      address_references: input.customer.references,
+      vehicle_type_name: quote.vehicle.name,
+      zone_name: quote.zone?.name ?? null,
+      time_slot_name: slot.name,
+      items: quote.lines.map((line) => ({
+        service_id: line.serviceId,
+        name: line.name,
+        kind: line.kind,
+        price_cents: line.priceCents,
+      })),
+      subtotal_cents: quote.subtotalCents,
+      surcharge_cents: quote.surchargeCents,
+      total_cents: quote.totalCents,
+      deposit_cents: amountCents,
+    },
+  });
+  if (createError) throw createError;
+  const booking = (created as { booking_id: string; booking_folio: string }[] | null)?.[0];
+  if (!booking) return { ok: false, message: SLOT_GONE };
+
+  const service = quote.lines.find((line) => line.kind === "base")?.name ?? "Servicio";
+  const label = parsedChoice.data.option === "full" ? "Pago completo" : "Anticipo";
+  try {
+    const { checkoutUrl } = await createCheckout(config, {
+      bookingId: booking.booking_id,
+      folio: booking.booking_folio,
+      title: `${label} · ${service} (${booking.booking_folio})`,
+      amountCents,
+      payerEmail: input.customer.email,
+      returnUrl: `${await requestOrigin()}/${data.business.slug}/reserva/${booking.booking_id}`,
+      expiresAt: new Date(now.getTime() + 30 * 60 * 1000),
+      now,
+    });
+    const { error } = await admin.from("bookings").update({ checkout_url: checkoutUrl }).eq("id", booking.booking_id);
+    if (error) throw error;
+    return { ok: true, checkoutUrl };
+  } catch (error) {
+    console.error("Could not open Mercado Pago for booking", booking.booking_id, error);
+    // Give the places back right away.
+    await admin.from("bookings").update({ status: "expired" }).eq("id", booking.booking_id).eq("status", "pending_payment");
+    return { ok: false, message: "No pudimos abrir Mercado Pago. Intenta de nuevo en unos minutos." };
+  }
 }

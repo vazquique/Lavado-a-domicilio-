@@ -9,6 +9,14 @@
 //          SUPABASE_SECRET_KEY=sb_secret_local
 // Every login code is 123456; the email button works with token_hash=local-link.
 // Only a small subset of PostgREST is implemented.
+//
+// Also fakes Mercado Pago (Checkout Pro) and Resend for the e2e tests:
+//   MERCADOPAGO_API_URL=http://127.0.0.1:54321/mercadopago
+//   MERCADOPAGO_ACCESS_TOKEN=local-mercadopago-token  MERCADOPAGO_WEBHOOK_SECRET=local-webhook-secret
+//   RESEND_API_URL=http://127.0.0.1:54321/resend/emails  RESEND_API_KEY=local-resend-key
+// The fake checkout page approves or rejects, sends the signed webhook to the app
+// (MERCADOPAGO_WEBHOOK_URL, default http://localhost:3300/api/webhooks/mercadopago) and
+// returns to the back URL like Mercado Pago does.
 import { createHmac, randomUUID } from "node:crypto";
 import http from "node:http";
 import { types } from "@electric-sql/pglite";
@@ -25,6 +33,11 @@ const asText = (value) => value;
 // whoever asked for a code last.
 const LOGIN_LINK_TOKEN_HASH = "local-link";
 let lastCodeEmail = null;
+
+const MP_TOKEN = "local-mercadopago-token";
+const MP_WEBHOOK_SECRET = "local-webhook-secret";
+const MP_WEBHOOK_URL = process.env.MERCADOPAGO_WEBHOOK_URL ?? "http://localhost:3300/api/webhooks/mercadopago";
+const RESEND_KEY = "local-resend-key";
 
 const db = await createLocalDb({
   parsers: { [types.DATE]: asText, [types.TIMESTAMP]: asText, [types.TIMESTAMPTZ]: asText },
@@ -229,6 +242,8 @@ async function handleRpc(req, res, name) {
   const sql = `select * from public.${quote(name)}(${args.join(", ")})`;
   try {
     const { rows } = await asRole(caller(req), (tx) => tx.query(sql, values));
+    // Like PostgREST: a function that returns a single value answers with just that value.
+    if (rows.length === 1 && Object.keys(rows[0]).length === 1 && name in rows[0]) return send(res, 200, rows[0][name]);
     return send(res, 200, rows);
   } catch (error) {
     return pgError(res, error);
@@ -317,6 +332,13 @@ async function handleAuth(req, res, url, route) {
 
   if (route === "logout") return send(res, 204);
 
+  const adminUser = /^admin\/users\/([0-9a-f-]{36})$/.exec(route);
+  if (adminUser && req.method === "GET") {
+    if (caller(req).role !== "service_role") return send(res, 403, { msg: "forbidden" });
+    const user = await findUser("id::text", adminUser[1]);
+    return user ? send(res, 200, userJson(user)) : send(res, 404, { code: 404, error_code: "user_not_found", msg: "User not found" });
+  }
+
   if (route === "admin/users" && req.method === "POST") {
     if (caller(req).role !== "service_role") return send(res, 403, { msg: "forbidden" });
     const email = String(body.email ?? "").toLowerCase();
@@ -371,6 +393,116 @@ async function handleStorage(req, res, url, rest) {
 }
 
 // ---------------------------------------------------------------------------
+// Mercado Pago (Checkout Pro subset) and Resend, for the e2e tests
+
+const preferences = new Map();
+const payments = new Map();
+const emails = [];
+let nextPaymentId = 9000001;
+
+const escapeHtml = (value) => String(value).replace(/[&<>"]/g, (char) => `&#${char.charCodeAt(0)};`);
+
+async function notifyApp(payment) {
+  const requestId = randomUUID();
+  const ts = String(Math.floor(Date.now() / 1000));
+  const v1 = createHmac("sha256", MP_WEBHOOK_SECRET).update(`id:${payment.id};request-id:${requestId};ts:${ts};`).digest("hex");
+  try {
+    const response = await fetch(`${MP_WEBHOOK_URL}?data.id=${payment.id}&type=payment`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-request-id": requestId, "x-signature": `ts=${ts},v1=${v1}` },
+      body: JSON.stringify({ action: "payment.created", type: "payment", data: { id: String(payment.id) }, live_mode: false }),
+    });
+    console.log(`[mercadopago] webhook for payment ${payment.id}: HTTP ${response.status}`);
+  } catch (error) {
+    console.log(`[mercadopago] webhook for payment ${payment.id} failed: ${error.message}`);
+  }
+}
+
+async function handleMercadoPago(req, res, url, rest) {
+  // The checkout page the customer sees (no token: it's the browser).
+  const page = /^checkout\/([\w-]+)$/.exec(rest);
+  if (page && req.method === "GET") {
+    const preference = preferences.get(page[1]);
+    if (!preference) return send(res, 404, Buffer.from("Preference not found"), { "content-type": "text/plain" });
+    const item = preference.items[0];
+    const button = (result, notify, label) =>
+      `<form method="post" action="/mercadopago/checkout/${page[1]}/pay"><input type="hidden" name="result" value="${result}">` +
+      `<input type="hidden" name="notify" value="${notify}"><button>${label}</button></form>`;
+    const html =
+      `<!doctype html><meta charset="utf-8"><title>Mercado Pago (local)</title><h1>${escapeHtml(item.title)}</h1>` +
+      `<p>Total: $${item.unit_price}</p>` +
+      button("approved", "1", "Pagar (aprobado)") +
+      button("approved", "0", "Pagar sin aviso (aprobado)") +
+      button("rejected", "1", "Pagar (rechazado)");
+    return send(res, 200, Buffer.from(html), { "content-type": "text/html; charset=utf-8" });
+  }
+
+  const pay = /^checkout\/([\w-]+)\/pay$/.exec(rest);
+  if (pay && req.method === "POST") {
+    const preference = preferences.get(pay[1]);
+    if (!preference) return send(res, 404, { message: "preference not found" });
+    const form = new URLSearchParams((await readBody(req)).toString());
+    const approved = form.get("result") === "approved";
+    const payment = {
+      id: nextPaymentId++,
+      status: approved ? "approved" : "rejected",
+      status_detail: approved ? "accredited" : "cc_rejected_other_reason",
+      external_reference: preference.external_reference,
+      transaction_amount: preference.items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0),
+      currency_id: preference.items[0].currency_id,
+      date_approved: approved ? new Date().toISOString() : null,
+    };
+    payments.set(String(payment.id), payment);
+    if (form.get("notify") === "1") await notifyApp(payment);
+    const back = new URL(approved ? preference.back_urls.success : preference.back_urls.failure);
+    for (const [key, value] of Object.entries({
+      collection_id: payment.id,
+      collection_status: payment.status,
+      payment_id: payment.id,
+      status: payment.status,
+      external_reference: payment.external_reference,
+      payment_type: "credit_card",
+      preference_id: pay[1],
+      site_id: "MLM",
+    })) {
+      back.searchParams.set(key, String(value));
+    }
+    return send(res, 302, undefined, { location: back.toString() });
+  }
+
+  // The API itself needs the access token.
+  if ((req.headers.authorization ?? "") !== `Bearer ${MP_TOKEN}`) {
+    return send(res, 401, { message: "invalid access token", status: 401 });
+  }
+  if (rest === "checkout/preferences" && req.method === "POST") {
+    const body = JSON.parse((await readBody(req)).toString());
+    const id = `local-${randomUUID()}`;
+    preferences.set(id, body);
+    const initPoint = `http://${req.headers.host}/mercadopago/checkout/${id}`;
+    return send(res, 201, { id, init_point: initPoint, sandbox_init_point: initPoint, ...body });
+  }
+  const payment = /^v1\/payments\/(\w+)$/.exec(rest);
+  if (payment && req.method === "GET") {
+    const found = payments.get(payment[1]);
+    return found ? send(res, 200, found) : send(res, 404, { message: "Payment not found", status: 404 });
+  }
+  if (rest === "users/me" && req.method === "GET") {
+    return send(res, 200, { id: 123456, email: "test_user_local@testuser.com", tags: ["test_user"] });
+  }
+  return send(res, 404, { message: `Not implemented: mercadopago ${rest}` });
+}
+
+async function handleResend(req, res, rest) {
+  if (rest === "emails" && req.method === "GET") return send(res, 200, emails);
+  if (rest !== "emails" || req.method !== "POST") return send(res, 404, { message: "Not found" });
+  if ((req.headers.authorization ?? "") !== `Bearer ${RESEND_KEY}`) return send(res, 401, { message: "API key is invalid" });
+  const email = JSON.parse((await readBody(req)).toString());
+  emails.push(email);
+  console.log(`[resend] to ${email.to.join(", ")}: ${email.subject}`);
+  return send(res, 200, { id: randomUUID() });
+}
+
+// ---------------------------------------------------------------------------
 
 http
   .createServer(async (req, res) => {
@@ -384,6 +516,10 @@ http
       if (auth) return await handleAuth(req, res, url, auth[1]);
       const storage = /^\/storage\/v1\/(.+)$/.exec(url.pathname);
       if (storage) return await handleStorage(req, res, url, storage[1]);
+      const mercadoPago = /^\/mercadopago\/(.+)$/.exec(url.pathname);
+      if (mercadoPago) return await handleMercadoPago(req, res, url, mercadoPago[1]);
+      const resend = /^\/resend\/(.+)$/.exec(url.pathname);
+      if (resend) return await handleResend(req, res, resend[1]);
       send(res, 404, { message: "Not found" });
     } catch (error) {
       console.error(error);

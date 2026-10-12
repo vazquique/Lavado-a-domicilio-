@@ -27,7 +27,7 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
 - `npm run build` — build de producción (lo mismo que corre Vercel)
 - `npm run supabase:local` — Supabase local de mentira (PGlite + migraciones reales + RLS) en :54321,
   para correr la app completa sin internet hacia Supabase. Variables en `.env.example`; código de acceso 123456.
-- `npm run e2e` — recorre el panel, el login por enlace y el cotizador con Chromium (necesita
+- `npm run e2e` — recorre el panel, el login por enlace, el cotizador y el pago con Chromium (necesita
   `npm run supabase:local` recién iniciado y `next start` en :3300 con `.env.local` apuntando a él). Capturas en
   `e2e/screenshots/`.
 
@@ -90,6 +90,22 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
 - Lugares: cada franja tiene `capacity` lugares; cada servicio ocupa `capacity_units` (reserva = suma, mínimo 1).
 - Un servicio principal con `includes_extras` (Full detailing) oculta los extras y `calculateQuote` los ignora.
   Lo ocupado sale de la función `public.slot_usage` (solo conteos; las reservas no son públicas).
+
+## Pagos (Mercado Pago)
+- Checkout Pro por REST en `src/lib/mercadopago.ts` (nombres de campos del SDK oficial `mercadopago` 3.x).
+  Variables: `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_WEBHOOK_SECRET` y `RESEND_API_KEY` (correo al negocio). Sin
+  Mercado Pago, el resumen ofrece WhatsApp.
+- `startCheckout` (`src/app/[slug]/actions.ts`): Zod, honeypot y términos; límite por IP
+  (`register_booking_attempt`); precio del servidor; aparta 30 min con `create_online_booking` (bloquea la franja
+  para que dos clientes no ganen el último lugar) y crea la preferencia, que vence con el apartado.
+- Webhook `src/app/api/webhooks/mercadopago/route.ts`: verifica `x-signature` (`src/lib/mercadopago-signature.ts`,
+  misma regla que el SDK), vuelve a pedir el pago a Mercado Pago y llama `record_mercadopago_payment` (idempotente;
+  confirma si el monto y la moneda cubren lo debido; devuelve si confirmó ahora para mandar el correo una vez).
+  La página `/[slug]/reserva/[id]` hace lo mismo con el `payment_id` del regreso.
+- Ojo: dentro de un render, Next.js reutiliza lecturas GET idénticas; no vuelvas a leer lo que acabas de cambiar.
+- `/api/health` dice si el token funciona y si es de una cuenta de prueba (`mercadoPagoTestAccount`).
+- Local: `npm run supabase:local` también imita Mercado Pago (página de pago falsa y webhook firmado) y Resend.
+- Producción: webhook en `https://lavado-a-domicilio.vercel.app/api/webhooks/mercadopago`, evento "Pagos".
 
 ## Estructura
 - `src/app/[slug]/` página pública del negocio · `src/app/panel/` panel del negocio · `src/app/admin/` superadmin

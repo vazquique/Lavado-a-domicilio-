@@ -49,7 +49,8 @@ await page.fill("input[name=references]", "Portón negro");
 await page.click("text=Ver resumen");
 await page.waitForSelector("text=Tu cotización");
 step("summary: " + (await page.locator("section").first().innerText()).replace(/\s+/g, " "));
-const wa = await page.locator("a:has-text('Enviar por WhatsApp')").getAttribute("href");
+// With Mercado Pago set up, the summary asks for payment and keeps WhatsApp for questions.
+const wa = await page.locator("a[href^='https://wa.me']").first().getAttribute("href");
 step("whatsapp link: " + wa.slice(0, 40) + "…");
 console.log(decodeURIComponent(wa.split("?text=")[1]));
 await shot("03-resumen");

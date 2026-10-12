@@ -1,12 +1,11 @@
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { getBookingData } from "@/lib/booking-data";
-import { readableTextColor } from "@/lib/colors";
 import { createPublicClient } from "@/lib/supabase/public";
 import { whatsAppLink } from "@/lib/whatsapp";
 import { BookingFlow } from "./booking-flow";
+import { BusinessHeader } from "./business-header";
 
 export default function BusinessPage({ params }: PageProps<"/[slug]">) {
   return (
@@ -44,20 +43,7 @@ async function Booking({ slug }: { slug: string }) {
 
   return (
     <div className="space-y-6">
-      <header
-        className="flex items-center gap-4 rounded-xl p-5"
-        style={{ backgroundColor: business.brandColor, color: readableTextColor(business.brandColor) }}
-      >
-        {business.logoUrl && (
-          <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-white">
-            <Image src={business.logoUrl} alt={`Logo de ${business.name}`} fill unoptimized className="object-contain p-1" />
-          </div>
-        )}
-        <div>
-          <h1 className="text-2xl font-bold">{business.name}</h1>
-          <p className="mt-1 text-sm opacity-90">Lavado de autos a domicilio. Cotiza y aparta en un minuto.</p>
-        </div>
-      </header>
+      <BusinessHeader business={business} tagline="Lavado de autos a domicilio. Cotiza y aparta en un minuto." />
       <BookingFlow data={data} now={now.toISOString()} askZoneUrl={askZoneUrl} />
     </div>
   );

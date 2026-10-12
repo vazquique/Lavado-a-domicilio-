@@ -10,7 +10,9 @@ import { calculateQuote, servicesForVehicle } from "@/lib/quote";
 import { formatMxPhone } from "@/lib/quote-message";
 import { formatClockTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
-import { prepareQuote, type QuoteSummary } from "./actions";
+import type { BookingRequest } from "@/lib/booking-request";
+import type { PaymentOption } from "@/lib/payment-options";
+import { prepareQuote, startCheckout, type QuoteSummary } from "./actions";
 
 type Customer = { name: string; phone: string; address: string; references: string; email: string };
 
@@ -47,7 +49,7 @@ export function BookingFlow({
   const [customer, setCustomer] = useState<Customer>(EMPTY_CUSTOMER);
   const [website, setWebsite] = useState("");
   const [error, setError] = useState("");
-  const [summary, setSummary] = useState<QuoteSummary | null>(null);
+  const [summary, setSummary] = useState<{ quote: QuoteSummary; request: BookingRequest } | null>(null);
   const [pending, startTransition] = useTransition();
 
   // Choices that stop making sense (another vehicle, a full slot) are dropped here
@@ -100,20 +102,21 @@ export function BookingFlow({
       setError(missing ?? "Revisa tus datos.");
       return;
     }
+    const request: BookingRequest = {
+      slug: data.business.slug,
+      vehicleTypeId,
+      baseServiceId: base,
+      extraServiceIds: extras,
+      zoneId,
+      date,
+      timeSlotId: slot,
+      customer,
+      website,
+    };
     startTransition(async () => {
-      const response = await prepareQuote({
-        slug: data.business.slug,
-        vehicleTypeId,
-        baseServiceId: base,
-        extraServiceIds: extras,
-        zoneId,
-        date,
-        timeSlotId: slot,
-        customer,
-        website,
-      });
+      const response = await prepareQuote(request);
       if (response.ok) {
-        setSummary(response.summary);
+        setSummary({ quote: response.summary, request });
         window.scrollTo({ top: 0 });
       } else {
         setError(response.message);
@@ -124,7 +127,13 @@ export function BookingFlow({
   if (summary) {
     return (
       <div style={brandStyle}>
-        <Summary summary={summary} onBack={() => setSummary(null)} policy={data.business.cancellationPolicy} />
+        <Summary
+          summary={summary.quote}
+          request={summary.request}
+          onBack={() => setSummary(null)}
+          policy={data.business.cancellationPolicy}
+          privacy={data.business.privacyNotice}
+        />
       </div>
     );
   }
@@ -361,8 +370,42 @@ export function BookingFlow({
   );
 }
 
-function Summary({ summary, onBack, policy }: { summary: QuoteSummary; onBack: () => void; policy: string }) {
+function Summary({
+  summary,
+  request,
+  onBack,
+  policy,
+  privacy,
+}: {
+  summary: QuoteSummary;
+  request: BookingRequest;
+  onBack: () => void;
+  policy: string;
+  privacy: string;
+}) {
   const { quote } = summary;
+  const [option, setOption] = useState<PaymentOption>(summary.choices[0]?.option ?? "full");
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [error, setError] = useState("");
+  const [paying, startPaying] = useTransition();
+  const amountCents = summary.choices.find((choice) => choice.option === option)?.amountCents ?? quote.totalCents;
+
+  function pay() {
+    setError("");
+    if (!acceptTerms) {
+      setError("Acepta la política de cancelación y el aviso de privacidad para continuar.");
+      return;
+    }
+    startPaying(async () => {
+      const response = await startCheckout(request, { option, acceptTerms });
+      if (response.ok) {
+        window.location.assign(response.checkoutUrl);
+      } else {
+        setError(response.message);
+      }
+    });
+  }
+
   return (
     <div className="space-y-5">
       <h2 className="text-xl font-bold">Tu cotización</h2>
@@ -395,22 +438,90 @@ function Summary({ summary, onBack, policy }: { summary: QuoteSummary; onBack: (
         </p>
       </section>
 
-      {summary.whatsappUrl && (
-        <a
-          href={summary.whatsappUrl}
-          className="block rounded-lg bg-green-600 px-4 py-3 text-center font-semibold text-white"
-        >
-          Enviar por WhatsApp para apartar
-        </a>
-      )}
-      <p className="text-sm text-muted-foreground">
-        Muy pronto podrás pagar tu anticipo aquí mismo para apartar tu lugar al instante.
-      </p>
-      {policy && (
-        <details className="rounded-xl border bg-card p-4 text-sm">
-          <summary className="cursor-pointer font-medium">Política de cancelación</summary>
-          <p className="mt-2 whitespace-pre-line text-muted-foreground">{policy}</p>
-        </details>
+      {summary.payOnline ? (
+        <>
+          <section className="space-y-2">
+            <h3 className="font-semibold">¿Cuánto quieres pagar ahora?</h3>
+            {summary.choices.map((choice) => (
+              <Choice key={choice.option} selected={choice.option === option} onClick={() => setOption(choice.option)}>
+                <span className="flex justify-between gap-3">
+                  <span className="font-medium">{choice.option === "full" ? "Pagar todo" : "Solo el anticipo"}</span>
+                  <span className="font-semibold">{formatMXN(choice.amountCents)}</span>
+                </span>
+                <span className="mt-1 block text-sm opacity-80">
+                  {choice.option === "full"
+                    ? "Ya no pagas nada el día del servicio."
+                    : `El resto, ${formatMXN(quote.totalCents - choice.amountCents)}, el día del servicio.`}
+                </span>
+              </Choice>
+            ))}
+          </section>
+
+          <label className="flex items-start gap-3 rounded-xl border bg-card p-4 text-sm">
+            <input
+              type="checkbox"
+              name="acceptTerms"
+              checked={acceptTerms}
+              onChange={(event) => {
+                setAcceptTerms(event.target.checked);
+                setError("");
+              }}
+              className="mt-0.5 size-5 shrink-0 accent-[var(--brand)]"
+            />
+            <span>Acepto la política de cancelación y el aviso de privacidad.</span>
+          </label>
+          {policy && (
+            <details className="rounded-xl border bg-card p-4 text-sm">
+              <summary className="cursor-pointer font-medium">Política de cancelación</summary>
+              <p className="mt-2 whitespace-pre-line text-muted-foreground">{policy}</p>
+            </details>
+          )}
+          {privacy && (
+            <details className="rounded-xl border bg-card p-4 text-sm">
+              <summary className="cursor-pointer font-medium">Aviso de privacidad</summary>
+              <p className="mt-2 whitespace-pre-line text-muted-foreground">{privacy}</p>
+            </details>
+          )}
+
+          {error && (
+            <p aria-live="polite" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={pay}
+            disabled={paying}
+            className="block h-12 w-full rounded-lg bg-[var(--brand)] px-4 font-semibold text-[var(--brand-text)] disabled:opacity-60"
+          >
+            {paying ? "Abriendo Mercado Pago…" : `Pagar ${formatMXN(amountCents)} con Mercado Pago`}
+          </button>
+          <p className="text-sm text-muted-foreground">
+            Tu lugar queda apartado 30 minutos mientras pagas. Puedes pagar con tarjeta o con tu saldo de Mercado Pago.
+          </p>
+          {summary.whatsappUrl && (
+            <a href={summary.whatsappUrl} className="block text-center text-sm font-medium underline">
+              ¿Dudas? Escríbenos por WhatsApp
+            </a>
+          )}
+        </>
+      ) : (
+        <>
+          {summary.whatsappUrl && (
+            <a
+              href={summary.whatsappUrl}
+              className="block rounded-lg bg-green-600 px-4 py-3 text-center font-semibold text-white"
+            >
+              Enviar por WhatsApp para apartar
+            </a>
+          )}
+          {policy && (
+            <details className="rounded-xl border bg-card p-4 text-sm">
+              <summary className="cursor-pointer font-medium">Política de cancelación</summary>
+              <p className="mt-2 whitespace-pre-line text-muted-foreground">{policy}</p>
+            </details>
+          )}
+        </>
       )}
       <button type="button" onClick={onBack} className="text-sm font-medium underline">
         Cambiar algo

@@ -189,3 +189,20 @@ Respuestas del dueño y cambios de alcance aprobados, en orden.
 - Límite de correos de Supabase subido de 2 a 30 por hora (se aplica con la configuración de Auth).
 - Revisión manual: el workflow `diagnose-login.yml` revisa usuario, invitación y SMTP, crea el usuario del
   dueño invitado si falta y manda un código real. `/api/health` también dice si la llave secreta funciona.
+
+### 2026-10-12 — Anticipo con Mercado Pago (Hito 3 del nuevo orden)
+- El cliente elige pagar solo el anticipo o todo de una vez (idea del dueño). Si el anticipo es 0 o ya es el
+  total, solo se ofrece pagar todo.
+- Al tocar "Pagar", el servidor recalcula el precio, aparta los lugares 30 minutos y abre Checkout Pro. El
+  cobro de Mercado Pago vence junto con el apartado. Si el mismo celular vuelve a empezar, su apartado anterior
+  se libera.
+- Solo tarjeta y saldo de Mercado Pago (sin OXXO/efectivo, cajeros ni transferencias), modo binario (aprobado
+  o rechazado) y en una sola exhibición (sin meses).
+- Límite contra spam: honeypot y 10 pagos iniciados por IP por hora (la IP se guarda como hash, no tal cual).
+- Confirman la reserva el webhook firmado (configurado en Tus integraciones, evento "Pagos") y la página de
+  regreso, que le pregunta el pago a Mercado Pago. Correo al negocio una sola vez por reserva confirmada.
+- Un pago aprobado que llega después de los 30 minutos igual confirma (el dinero ya entró); si el negocio
+  canceló la reserva, no. Reembolsos a mano en Mercado Pago; si llega el aviso, la reserva queda como reembolsada.
+- Mientras Mercado Pago no esté configurado en Vercel, el resumen sigue con "Enviar por WhatsApp para apartar".
+- Credenciales de prueba (cuenta de prueba vendedora) hasta que el dueño diga. `/api/health` dice si el token
+  es de una cuenta de prueba.
