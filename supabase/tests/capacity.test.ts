@@ -42,6 +42,22 @@ describe("places per service", () => {
   });
 });
 
+describe("main services that include the extras", () => {
+  test("JB's Bros: only Full detailing includes them", async () => {
+    const { rows } = await db.query<{ name: string }>(
+      "select name from public.services where business_id = $1 and includes_extras",
+      [jbsId],
+    );
+    expect(rows.map((row) => row.name)).toEqual(["Full detailing"]);
+  });
+
+  test("an extra can't include extras", async () => {
+    await expect(
+      db.query("update public.services set includes_extras = true where business_id = $1 and kind = 'extra'", [jbsId]),
+    ).rejects.toThrow(/services_includes_extras_base_only/);
+  });
+});
+
 describe("slot_usage", () => {
   test("counts taken places per slot, including unexpired holds only", async () => {
     await book(morningId, 1, "confirmed");
