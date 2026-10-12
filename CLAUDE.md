@@ -69,5 +69,8 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
 
 ## Entorno de Claude
 - No hay Docker ni Supabase local. Las migraciones se aplican al proyecto en la nube vía GitHub Actions.
-- El contenedor puede tener bloqueados los dominios de Supabase / Mercado Pago / Vercel / Resend. La
-  documentación de Supabase se puede leer desde `raw.githubusercontent.com/supabase/supabase/master/apps/docs/content/`.
+- El contenedor tiene bloqueados los dominios de Supabase / Mercado Pago / Vercel / Resend (el dueño no puede
+  abrir la red). La documentación de Supabase se puede leer desde
+  `raw.githubusercontent.com/supabase/supabase/master/apps/docs/content/`.
+- Para revisar el sitio publicado, lanzar el workflow `smoke.yml` (inputs `url` y `expect`) por la API de
+  GitHub y leer el log: imprime el texto visible de la página.

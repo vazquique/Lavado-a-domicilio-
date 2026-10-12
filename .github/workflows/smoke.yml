@@ -1,0 +1,39 @@
+name: Smoke check
+
+# Opens a deployed page from GitHub's servers and prints its visible text.
+# Lets us check the live site even when the development container can't reach it.
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Full URL to check, e.g. https://example.vercel.app/jbsbros"
+        required: true
+      expect:
+        description: "Text that must appear on the page"
+        required: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch page and look for the expected text
+        env:
+          URL: ${{ inputs.url }}
+          EXPECT: ${{ inputs.expect }}
+        run: |
+          status=$(curl -sSL --max-time 60 -o page.html -w "%{http_code}" "$URL")
+          echo "HTTP $status"
+          python3 - <<'PY'
+          import html, os, re, sys
+
+          raw = open("page.html", encoding="utf-8", errors="replace").read()
+          raw = re.sub(r"(?is)<(script|style)\b[^>]*>.*?</\1>", " ", raw)
+          text = re.sub(r"\s+", " ", html.unescape(re.sub(r"(?s)<[^>]+>", " ", raw))).strip()
+          print(text[:3000])
+
+          expect = os.environ["EXPECT"]
+          if expect not in text:
+              print(f"::error::Expected text not found: {expect}")
+              sys.exit(1)
+          print(f"OK: found {expect!r}")
+          PY
