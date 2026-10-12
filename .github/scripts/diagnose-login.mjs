@@ -113,6 +113,9 @@ console.log(
   "| shows the business:", panelHtml.includes("Ver mi página como cliente"), "| signed out:", logout,
 );
 
+// Supabase sends one email per minute per user, and the link above counts as one.
+await new Promise((resolve) => setTimeout(resolve, 61_000));
+
 // Same call the login page makes. If it works, the owner gets a real login email.
 const otp = await fetch(`${base}/auth/v1/otp`, {
   method: "POST",
@@ -123,7 +126,7 @@ console.log("6. Send login code:", otp.status, mask(await otp.text()));
 
 if (!RESEND_API_KEY) {
   console.log("7. RESEND_API_KEY is not set");
-} else if (!otp.ok) {
+} else if (!otp.ok && otp.status !== 429) {
   // Supabase couldn't send it: try Resend directly to see Resend's own error.
   const send = await fetch("https://api.resend.com/emails", {
     method: "POST",
