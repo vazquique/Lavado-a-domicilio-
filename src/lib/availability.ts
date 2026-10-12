@@ -72,3 +72,11 @@ export function isSlotBookable(input: {
   const slot = slotsForDate(input).find((item) => item.id === input.slotId);
   return slot?.status === "available";
 }
+
+// Days where at least one slot can still be reached in time. Late in the day, today
+// has none left and shouldn't be offered (nor shown as "full").
+export function daysWithTimeLeft(slotsByDate: Map<string, SlotAvailability[]>): string[] {
+  return [...slotsByDate.entries()]
+    .filter(([, slots]) => slots.some((slot) => slot.status !== "too_soon"))
+    .map(([date]) => date);
+}

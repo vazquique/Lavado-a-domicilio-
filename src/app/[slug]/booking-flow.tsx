@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, type CSSProperties, type ReactNode } from "react";
-import { bookableDates, slotsForDate, type SlotAvailability } from "@/lib/availability";
+import { bookableDates, daysWithTimeLeft, slotsForDate, type SlotAvailability } from "@/lib/availability";
 import type { BookingData } from "@/lib/booking-data";
 import { readableTextColor } from "@/lib/colors";
 import { dayLabel } from "@/lib/dates";
@@ -65,13 +65,13 @@ export function BookingFlow({
   const quote = result?.ok ? result.quote : null;
   const unitsNeeded = quote?.capacityUnits ?? 1;
 
-  const dates = bookableDates(data.rules, now);
   const slotsByDate = new Map(
-    dates.map((day) => [
+    bookableDates(data.rules, now).map((day) => [
       day,
       slotsForDate({ date: day, slots: data.slots, usage: data.usage, rules: data.rules, now, unitsNeeded }),
     ]),
   );
+  const dates = daysWithTimeLeft(slotsByDate);
   const daySlots = date ? (slotsByDate.get(date) ?? []) : [];
   const slot = daySlots.some((item) => item.id === slotId && item.status === "available") ? slotId : null;
 

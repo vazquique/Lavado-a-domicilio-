@@ -1,5 +1,12 @@
 import { describe, expect, test } from "vitest";
-import { bookableDates, isSlotBookable, slotsForDate, type ScheduleRules, type SlotRule } from "./availability";
+import {
+  bookableDates,
+  daysWithTimeLeft,
+  isSlotBookable,
+  slotsForDate,
+  type ScheduleRules,
+  type SlotRule,
+} from "./availability";
 
 const rules: ScheduleRules = {
   workingDays: [1, 2, 3, 4, 5, 6], // Monday to Saturday
@@ -89,4 +96,15 @@ describe("isSlotBookable", () => {
     expect(isSlotBookable({ ...input, date: "2026-10-12", slotId: "morning" })).toBe(false); // too soon
     expect(isSlotBookable({ ...input, date: "2026-10-13", slotId: "night" })).toBe(false); // unknown slot
   });
+});
+
+test("daysWithTimeLeft drops today once every slot is too soon", () => {
+  const lateMorning = new Date("2026-10-12T17:30:00Z"); // 11:30 in Mexico City: 13:00 is under 2 hours away
+  const slotsByDate = new Map(
+    ["2026-10-12", "2026-10-13"].map((date) => [
+      date,
+      slotsForDate({ date, slots, usage: [], rules, now: lateMorning, unitsNeeded: 1 }),
+    ]),
+  );
+  expect(daysWithTimeLeft(slotsByDate)).toEqual(["2026-10-13"]);
 });

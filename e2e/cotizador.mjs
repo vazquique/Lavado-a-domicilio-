@@ -25,9 +25,14 @@ await page.click("button[role=checkbox]:has-text('Restauración de faros')");
 step("bar after extra: " + (await bar()));
 await page.click("button:has-text('Capital Norte')");
 
+// Day buttons by day number (today disappears once no slot can be reached in time).
+const dayInMexico = (offsetDays) =>
+  String(Number(new Date(Date.now() + offsetDays * 86_400_000).toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }).slice(8, 10)));
+const dayButton = (offsetDays) =>
+  page.locator("section", { hasText: "Día y horario" }).locator(`button[aria-pressed]:has(span.text-lg:text-is("${dayInMexico(offsetDays)}"))`);
+
 // Tomorrow: the morning is full (3 of 3 places taken).
-const days = page.locator("section", { hasText: "Día y horario" }).locator("button[aria-pressed]");
-await days.nth(1).click();
+await dayButton(1).click();
 const slotTexts = await page.locator("section", { hasText: "Día y horario" }).locator("button.block").allInnerTexts();
 step("tomorrow slots: " + JSON.stringify(slotTexts.map((t) => t.replace(/\s+/g, " "))));
 await page.locator("button.block:has-text('Tarde')").click();
@@ -55,16 +60,20 @@ step("back keeps choices, bar: " + (await bar()));
 
 // Full detailing needs the whole slot: tomorrow's morning can't take it.
 await page.click("button:has-text('Full detailing')");
-await page.locator("section", { hasText: "Día y horario" }).locator("button[aria-pressed]").nth(1).click();
+await dayButton(1).click();
 const fullSlots = await page.locator("section", { hasText: "Día y horario" }).locator("button.block").allInnerTexts();
 step("full detailing tomorrow: " + JSON.stringify(fullSlots.map((t) => t.replace(/\s+/g, " "))));
 step("bar with full detailing: " + (await bar()));
 step("extras hidden with full detailing: " + ((await page.locator("text=Extras (opcional)").count()) === 0));
 
-// Today: slots that start in less than 2 hours.
-await page.locator("section", { hasText: "Día y horario" }).locator("button[aria-pressed]").nth(0).click();
-const todaySlots = await page.locator("section", { hasText: "Día y horario" }).locator("button.block").allInnerTexts();
-step("today: " + JSON.stringify(todaySlots.map((t) => t.replace(/\s+/g, " "))));
+// Today: slots that start in less than 2 hours; the day is hidden when none is left.
+if ((await dayButton(0).count()) === 0) {
+  step("today: hidden (no slot can be reached in time)");
+} else {
+  await dayButton(0).click();
+  const todaySlots = await page.locator("section", { hasText: "Día y horario" }).locator("button.block").allInnerTexts();
+  step("today: " + JSON.stringify(todaySlots.map((t) => t.replace(/\s+/g, " "))));
+}
 
 await page.click("button:has-text('Mi colonia no está')");
 const ask = await page.locator("a:has-text('Pregúntanos por WhatsApp')").getAttribute("href");
