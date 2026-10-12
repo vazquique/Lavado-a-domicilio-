@@ -21,6 +21,7 @@ export function getSupabasePublicEnv(): SupabasePublicEnv | null {
 // The secret key bypasses RLS. Only server code that has already checked who is
 // asking may use it.
 export function getSupabaseSecretKey(): string | null {
-  const key = process.env.SUPABASE_SECRET_KEY;
-  return key && key.length > 0 ? key : null;
+  // Trimmed: a key pasted from a phone can carry a space or a line break.
+  const key = process.env.SUPABASE_SECRET_KEY?.trim();
+  return key ? key : null;
 }
