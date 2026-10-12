@@ -6,6 +6,7 @@ export type Business = {
   name: string;
   whatsappPhone: string | null;
   brandColor: string;
+  logoPath: string | null;
   depositType: "percent" | "fixed";
   depositValue: number;
   workingDays: number[];
@@ -53,7 +54,7 @@ export async function getBusinessCatalog(
 
   const { data: business, error } = await supabase
     .from("businesses")
-    .select("id, slug, name, whatsapp_phone, brand_color, deposit_type, deposit_value, working_days")
+    .select("id, slug, name, whatsapp_phone, brand_color, logo_path, deposit_type, deposit_value, working_days")
     .eq("slug", slug)
     .eq("active", true)
     .maybeSingle();
@@ -102,6 +103,7 @@ export async function getBusinessCatalog(
       name: business.name,
       whatsappPhone: business.whatsapp_phone,
       brandColor: business.brand_color,
+      logoPath: business.logo_path,
       depositType: business.deposit_type,
       depositValue: business.deposit_value,
       workingDays: business.working_days,

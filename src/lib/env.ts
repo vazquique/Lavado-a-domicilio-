@@ -1,3 +1,4 @@
+import "server-only";
 import { z } from "zod";
 
 const supabasePublicEnvSchema = z.object({
@@ -15,4 +16,11 @@ export function getSupabasePublicEnv(): SupabasePublicEnv | null {
     publishableKey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   });
   return parsed.success ? parsed.data : null;
+}
+
+// The secret key bypasses RLS. Only server code that has already checked who is
+// asking may use it.
+export function getSupabaseSecretKey(): string | null {
+  const key = process.env.SUPABASE_SECRET_KEY;
+  return key && key.length > 0 ? key : null;
 }

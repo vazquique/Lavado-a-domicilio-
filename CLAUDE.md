@@ -25,10 +25,13 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
 - `npm test` — Vitest (incluye pruebas de RLS en Postgres en memoria)
 - `npm run check` — lint + typecheck + test (correr antes de cada commit)
 - `npm run build` — build de producción (lo mismo que corre Vercel)
+- `npm run supabase:local` — Supabase local de mentira (PGlite + migraciones reales + RLS) en :54321,
+  para correr la app completa sin internet hacia Supabase. Variables en `.env.example`; código de acceso 123456.
 
 ## Convenciones
 - Código, tablas/columnas y commits en inglés. Textos de interfaz en español de México (`lang="es-MX"`).
-- Nombre del producto: solo en `src/config/product.ts`. Nunca escribirlo a mano en otro lugar.
+- Nombre del producto: solo en `src/config/product.json` (lo leen la app y el correo de acceso). Nunca
+  escribirlo a mano en otro lugar.
 - Dinero: enteros en centavos (`*_cents`) en BD y lógica; mostrar con `formatMXN` (`src/lib/money.ts`).
 - Fechas: zona `America/Mexico_City`. Días de la semana en formato ISO (1 = lunes … 7 = domingo).
 - Multi-negocio: toda tabla de negocio lleva `business_id`; las FK compuestas `(business_id, id)` impiden
@@ -58,11 +61,27 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
   (roles `anon`/`authenticated`/`service_role`, `auth.users`, `auth.uid()`). Usar `asRole()` para probar RLS.
 - Al hacer push a `main`, GitHub Actions (`db-migrate.yml`) prueba y aplica las migraciones con
   `supabase db push`. Secretos del repo: `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_ID`.
-- Clientes: `src/lib/supabase/public.ts` (páginas públicas, rol `anon`). Los de sesión de usuario y de
-  servidor con secret key se agregan cuando se necesiten (panel, pagos).
+- Clientes: `src/lib/supabase/public.ts` (páginas públicas, rol `anon`), `server.ts` (sesión del usuario por
+  cookies, RLS como `authenticated`) y `admin.ts` (secret key, salta RLS: solo después de verificar en el servidor
+  quién pide qué).
+- Las pruebas y el Supabase local comparten `supabase/local/db.mjs` (stub de Supabase + migraciones).
+
+## Panel y acceso
+- Nadie se registra solo (`disable_signup`). El dueño entra con un código de 6 dígitos por correo (o el botón
+  del correo → `/auth/confirm`). Si su correo está en `business_invites`, el servidor crea su usuario y un
+  trigger en `auth.users` lo vuelve miembro (`business_members`).
+- Cada página del panel lee la sesión con `getPanelSession()` (`src/lib/panel/session.ts`) dentro de
+  `<Suspense>`; cada Server Action llama `requirePanelBusiness()` y valida con Zod (`src/lib/panel/schemas.ts`).
+- Formularios: `useFormAction` (`src/components/panel/use-form-action.ts`) evita que React borre lo escrito
+  cuando hay un error; tras guardar, la acción llama `refresh()`.
+- Configuración de Auth como código: `supabase/auth/` (URL del sitio, redirecciones, correo en español, SMTP de
+  Resend) se aplica con `.github/workflows/auth-config.yml` vía Management API. El token necesita Auth Config y
+  Project Settings en lectura-escritura. Secreto extra: `RESEND_API_KEY`.
 
 ## Estructura
 - `src/app/[slug]/` página pública del negocio · `src/app/panel/` panel del negocio · `src/app/admin/` superadmin
+- `src/app/panel/<sección>/` = `page.tsx` (lee datos) + `actions.ts` (Server Actions) + formularios cliente
+- `src/components/ui/` componentes de shadcn/ui (copiados del repo oficial; el CLI no tiene red aquí)
 - `src/lib/` lógica pura y acceso a datos (+ `*.test.ts`)
 - `src/config/product.ts` nombre del producto
 - `supabase/migrations/` esquema y datos iniciales · `supabase/tests/` pruebas de esquema y RLS
@@ -73,4 +92,6 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
   abrir la red). La documentación de Supabase se puede leer desde
   `raw.githubusercontent.com/supabase/supabase/master/apps/docs/content/`.
 - Para revisar el sitio publicado, lanzar el workflow `smoke.yml` (inputs `url` y `expect`) por la API de
-  GitHub y leer el log: imprime el texto visible de la página.
+  GitHub y leer el log: imprime el texto visible de la página. `/api/health` dice qué variables faltan.
+- Para probar la interfaz: `npm run supabase:local`, `npm run build` y `next start` con `.env.local` apuntando al
+  Supabase local, y recorrerla con Playwright (Chromium en `/opt/pw-browsers`, sin `playwright install`).

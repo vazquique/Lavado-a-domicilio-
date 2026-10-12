@@ -1,6 +1,10 @@
+import Image from "next/image";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { getBusinessCatalog, priceRange, type BusinessCatalog } from "@/lib/catalog";
+import { readableTextColor } from "@/lib/colors";
+import { logoUrl } from "@/lib/logos";
 import { formatMXN } from "@/lib/money";
 import { formatWorkingDays } from "@/lib/schedule";
 import { createPublicClient } from "@/lib/supabase/public";
@@ -22,6 +26,8 @@ export default function BusinessPage({ params }: PageProps<"/[slug]">) {
 }
 
 async function BusinessPreview({ slug }: { slug: string }) {
+  // Fresh data on every visit (prices and schedules change from the panel).
+  await connection();
   const supabase = createPublicClient();
   if (!supabase) {
     return (
@@ -34,10 +40,10 @@ async function BusinessPreview({ slug }: { slug: string }) {
   const catalog = await getBusinessCatalog(supabase, slug);
   if (!catalog) notFound();
 
-  return <CatalogPreview catalog={catalog} />;
+  return <CatalogPreview catalog={catalog} logo={logoUrl(catalog.business.logoPath)} />;
 }
 
-function CatalogPreview({ catalog }: { catalog: BusinessCatalog }) {
+function CatalogPreview({ catalog, logo }: { catalog: BusinessCatalog; logo: string | null }) {
   const { business, vehicleTypes, services, prices, zones, timeSlots } = catalog;
   const priceByKey = new Map(
     prices.map((price) => [`${price.serviceId}:${price.vehicleTypeId}`, price.priceCents]),
@@ -55,9 +61,19 @@ function CatalogPreview({ catalog }: { catalog: BusinessCatalog }) {
 
   return (
     <div className="space-y-6">
-      <header className="rounded-xl p-5 text-white" style={{ backgroundColor: business.brandColor }}>
-        <h1 className="text-2xl font-bold">{business.name}</h1>
-        <p className="mt-1 text-sm opacity-90">Lavado de autos a domicilio</p>
+      <header
+        className="flex items-center gap-4 rounded-xl p-5"
+        style={{ backgroundColor: business.brandColor, color: readableTextColor(business.brandColor) }}
+      >
+        {logo && (
+          <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-white">
+            <Image src={logo} alt={`Logo de ${business.name}`} fill unoptimized className="object-contain p-1" />
+          </div>
+        )}
+        <div>
+          <h1 className="text-2xl font-bold">{business.name}</h1>
+          <p className="mt-1 text-sm opacity-90">Lavado de autos a domicilio</p>
+        </div>
       </header>
 
       <p className="rounded-lg bg-blue-50 p-3 text-sm text-blue-900">

@@ -1,0 +1,16 @@
+<div style="font-family: Arial, Helvetica, sans-serif; color: #171717; max-width: 480px">
+  <h2 style="margin: 0 0 12px">Tu código de acceso</h2>
+  <p style="margin: 0 0 8px">Escribe este código en la página para entrar:</p>
+  <p style="font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 0 0 20px">{{ .Token }}</p>
+  <p style="margin: 0 0 12px">O toca este botón:</p>
+  <p style="margin: 0 0 20px">
+    <a
+      href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email"
+      style="background: #171717; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block"
+      >Entrar</a
+    >
+  </p>
+  <p style="color: #737373; font-size: 13px; margin: 0">
+    El código vence en 1 hora y solo sirve una vez. Si tú no lo pediste, ignora este correo.
+  </p>
+</div>

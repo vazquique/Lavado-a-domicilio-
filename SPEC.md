@@ -162,3 +162,12 @@ Respuestas del dueño y cambios de alcance aprobados, en orden.
 - Nuevo orden (el dueño lo dejó a criterio de Claude): primero la parte del panel para editar los datos del
   negocio, luego el cotizador, luego el anticipo con Mercado Pago, luego la parte del panel de reservas,
   multi-negocio y membresías.
+
+### 2026-10-12 — Panel para editar datos (Hito 1 del nuevo orden)
+- Entrada al panel sin contraseña: código de 6 dígitos por correo (también sirve el botón del correo).
+  Funciona aunque el correo se abra en otro navegador. Nadie puede registrarse solo; el acceso es por invitación.
+- El panel edita: servicios (principal/extra, precio por vehículo, visible), tipos de vehículo, zonas y recargos,
+  franjas y cupos, días de trabajo, anticipación mínima, días hacia adelante, fechas bloqueadas, nombre, WhatsApp,
+  color, logo, anticipo y textos legales.
+- Borrar algo que ya tiene reservas no se permite; se oculta en su lugar.
+- El logo se achica en el celular antes de subirlo (máximo 512 px).

@@ -1,0 +1,8 @@
+{
+  "site_url": "https://lavado-a-domicilio.vercel.app",
+  "uri_allow_list": "https://lavado-a-domicilio.vercel.app/**",
+  "disable_signup": true,
+  "external_email_enabled": true,
+  "mailer_otp_length": 6,
+  "mailer_subjects_magic_link": "Tu código de acceso: {{ .Token }}"
+}
