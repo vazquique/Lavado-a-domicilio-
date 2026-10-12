@@ -13,6 +13,7 @@ export type ServiceValues = {
   name: string;
   description: string;
   kind: "base" | "extra";
+  capacityUnits: number;
   active: boolean;
   sortOrder: number;
   prices: Record<string, number>;
@@ -65,6 +66,23 @@ export function ServiceForm({
           />
         </Field>
       </div>
+
+      <Field
+        label="Lugares que ocupa"
+        htmlFor={`units-${key}`}
+        hint="Cada franja tiene lugares (ve Horarios). Lavado normal: 1. Un servicio que tarda toda la franja: el cupo completo. Extras rápidos: 0."
+      >
+        <Input
+          id={`units-${key}`}
+          name="capacityUnits"
+          type="number"
+          inputMode="numeric"
+          min={0}
+          max={20}
+          defaultValue={service?.capacityUnits ?? 0}
+          className="w-24"
+        />
+      </Field>
 
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium">Precio por vehículo</legend>

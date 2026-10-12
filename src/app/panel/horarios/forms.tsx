@@ -94,7 +94,7 @@ export function TimeSlotForm({ slot }: { slot?: TimeSlotValues }) {
         <Field label="Nombre" htmlFor={`name-${key}`}>
           <Input id={`name-${key}`} name="name" defaultValue={slot?.name} placeholder="Mañana" required maxLength={40} />
         </Field>
-        <Field label="Cupo" htmlFor={`capacity-${key}`}>
+        <Field label="Lugares" htmlFor={`capacity-${key}`}>
           <Input
             id={`capacity-${key}`}
             name="capacity"

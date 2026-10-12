@@ -42,3 +42,6 @@ next-env.d.ts
 
 # example env file is safe to commit
 !.env.example
+
+# e2e screenshots
+/e2e/screenshots/

@@ -220,6 +220,20 @@ async function handleRest(req, res, url, table) {
   return send(res, req.method === "POST" ? 201 : 200, rows);
 }
 
+// POST /rest/v1/rpc/<function> with named arguments in the JSON body.
+async function handleRpc(req, res, name) {
+  const body = JSON.parse((await readBody(req)).toString() || "{}");
+  const values = [];
+  const args = Object.entries(body).map(([key, value]) => (values.push(value), `${quote(key)} => $${values.length}`));
+  const sql = `select * from public.${quote(name)}(${args.join(", ")})`;
+  try {
+    const { rows } = await asRole(caller(req), (tx) => tx.query(sql, values));
+    return send(res, 200, rows);
+  } catch (error) {
+    return pgError(res, error);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Auth (GoTrue subset)
 
@@ -361,6 +375,8 @@ http
   .createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
     try {
+      const rpc = /^\/rest\/v1\/rpc\/([a-z_]+)$/.exec(url.pathname);
+      if (rpc && req.method === "POST") return await handleRpc(req, res, rpc[1]);
       const rest = /^\/rest\/v1\/([a-z_]+)$/.exec(url.pathname);
       if (rest) return await handleRest(req, res, url, rest[1]);
       const auth = /^\/auth\/v1\/(.+)$/.exec(url.pathname);

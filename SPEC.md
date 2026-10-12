@@ -171,3 +171,13 @@ Respuestas del dueño y cambios de alcance aprobados, en orden.
   color, logo, anticipo y textos legales.
 - Borrar algo que ya tiene reservas no se permite; se oculta en su lugar.
 - El logo se achica en el celular antes de subirlo (máximo 512 px).
+
+### 2026-10-12 — Cotizador (Hito 2 del nuevo orden)
+- Lugares por servicio (aprobado por el dueño): cada franja tiene lugares (cupo) y cada servicio ocupa los
+  lugares que diga el panel. Lavado normal 1, Full detailing 3 (la franja completa), extras 0 por defecto.
+  Una reserva ocupa la suma (mínimo 1) y solo se ofrecen franjas donde cabe.
+- Mientras llega el pago con Mercado Pago, el resumen termina con "Enviar por WhatsApp para apartar"
+  (mensaje con vehículo, servicios, colonia, fecha, horario, dirección, datos y montos).
+- Protección contra spam: honeypot desde ahora; el límite de intentos por IP se agrega con la creación de
+  reservas (siguiente hito), que es cuando se guarda algo.
+- Pendiente preguntar: si al elegir Full detailing se deben ocultar los extras (ya los incluye).

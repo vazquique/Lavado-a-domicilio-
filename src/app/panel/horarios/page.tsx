@@ -8,7 +8,10 @@ import { BlockedDateForm, ScheduleSettingsForm, TimeSlotForm } from "./forms";
 export default function SchedulePage() {
   return (
     <div className="space-y-6">
-      <SectionHeader title="Horarios" description="Franjas que el cliente puede elegir y cuántos lavados caben en cada una." />
+      <SectionHeader
+        title="Horarios"
+        description="Franjas que el cliente puede elegir y cuántos lugares tiene cada una. Cada servicio ocupa los lugares que le pongas en Servicios y precios."
+      />
       <Suspense fallback={<PanelLoading />}>
         <ScheduleEditor />
       </Suspense>
@@ -47,7 +50,7 @@ async function ScheduleEditor() {
   return (
     <div className="space-y-8">
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Franjas y cupos</h2>
+        <h2 className="text-lg font-semibold">Franjas y lugares</h2>
         {slots.data.map((slot) => (
           <div key={slot.id} className="rounded-xl border bg-card p-4 shadow-sm">
             <TimeSlotForm

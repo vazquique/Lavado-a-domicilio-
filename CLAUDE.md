@@ -27,6 +27,9 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
 - `npm run build` — build de producción (lo mismo que corre Vercel)
 - `npm run supabase:local` — Supabase local de mentira (PGlite + migraciones reales + RLS) en :54321,
   para correr la app completa sin internet hacia Supabase. Variables en `.env.example`; código de acceso 123456.
+- `npm run e2e` — recorre el panel, el login por enlace y el cotizador con Chromium (necesita
+  `npm run supabase:local` recién iniciado y `next start` en :3300 con `.env.local` apuntando a él). Capturas en
+  `e2e/screenshots/`.
 
 ## Convenciones
 - Código, tablas/columnas y commits en inglés. Textos de interfaz en español de México (`lang="es-MX"`).
@@ -77,6 +80,15 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
 - Configuración de Auth como código: `supabase/auth/` (URL del sitio, redirecciones, correo en español, SMTP de
   Resend) se aplica con `.github/workflows/auth-config.yml` vía Management API. El token necesita Auth Config y
   Project Settings en lectura-escritura. Secreto extra: `RESEND_API_KEY`.
+
+## Cotizador (página pública)
+- `src/app/[slug]/page.tsx` carga todo con `getBookingData()` (`src/lib/booking-data.ts`) y lo pasa a
+  `booking-flow.tsx` (cliente). El cliente calcula precio y horarios con las mismas funciones puras que el
+  servidor (`src/lib/quote.ts`, `src/lib/availability.ts`) solo para mostrarlos.
+- El resumen oficial lo arma la Server Action `prepareQuote` (`src/app/[slug]/actions.ts`): recibe solo ids y
+  datos del cliente (Zod en `src/lib/booking-request.ts`, con honeypot), vuelve a leer la BD y revisa el horario.
+- Lugares: cada franja tiene `capacity` lugares; cada servicio ocupa `capacity_units` (reserva = suma, mínimo 1).
+  Lo ocupado sale de la función `public.slot_usage` (solo conteos; las reservas no son públicas).
 
 ## Estructura
 - `src/app/[slug]/` página pública del negocio · `src/app/panel/` panel del negocio · `src/app/admin/` superadmin
