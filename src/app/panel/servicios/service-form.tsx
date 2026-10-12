@@ -14,6 +14,7 @@ export type ServiceValues = {
   description: string;
   kind: "base" | "extra";
   capacityUnits: number;
+  includesExtras: boolean;
   active: boolean;
   sortOrder: number;
   prices: Record<string, number>;
@@ -109,6 +110,12 @@ export function ServiceForm({
         ))}
       </fieldset>
 
+      <CheckboxField
+        id={`includes-${key}`}
+        name="includesExtras"
+        label="Incluye todos los extras (solo principales; oculta los extras al cliente)"
+        defaultChecked={service?.includesExtras ?? false}
+      />
       <CheckboxField id={`active-${key}`} name="active" label="Visible para clientes" defaultChecked={service?.active ?? true} />
       <FormFooter state={state} pending={pending} label={service ? "Guardar" : "Agregar"}>
         {service && (

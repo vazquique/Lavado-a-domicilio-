@@ -15,6 +15,7 @@ export async function saveService(_prev: ActionState, formData: FormData): Promi
     description: formData.get("description"),
     kind: formData.get("kind"),
     capacityUnits: formData.get("capacityUnits"),
+    includesExtras: formData.get("includesExtras"),
     active: formData.get("active"),
     sortOrder: formData.get("sortOrder"),
   });
@@ -35,8 +36,17 @@ export async function saveService(_prev: ActionState, formData: FormData): Promi
     prices.push({ vehicleTypeId: vehicle.id, cents: price.data });
   }
 
-  const { id, name, description, kind, capacityUnits, active, sortOrder } = parsed.data;
-  const values = { name, description, kind, capacity_units: capacityUnits, active, sort_order: sortOrder };
+  const { id, name, description, kind, capacityUnits, includesExtras, active, sortOrder } = parsed.data;
+  const values = {
+    name,
+    description,
+    kind,
+    capacity_units: capacityUnits,
+    // Only main services can include the extras.
+    includes_extras: kind === "base" && includesExtras,
+    active,
+    sort_order: sortOrder,
+  };
   const saved = id
     ? await supabase.from("services").update(values).eq("id", id).eq("business_id", business.id).select("id").single()
     : await supabase.from("services").insert({ ...values, business_id: business.id }).select("id").single();

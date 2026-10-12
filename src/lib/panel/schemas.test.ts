@@ -27,6 +27,7 @@ describe("serviceSchema", () => {
       description: "",
       kind: "extra",
       capacityUnits: 1,
+      includesExtras: false,
       active: true,
       sortOrder: 0,
     });

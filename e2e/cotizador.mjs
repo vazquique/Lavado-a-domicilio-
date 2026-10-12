@@ -59,6 +59,7 @@ await page.locator("section", { hasText: "Día y horario" }).locator("button[ari
 const fullSlots = await page.locator("section", { hasText: "Día y horario" }).locator("button.block").allInnerTexts();
 step("full detailing tomorrow: " + JSON.stringify(fullSlots.map((t) => t.replace(/\s+/g, " "))));
 step("bar with full detailing: " + (await bar()));
+step("extras hidden with full detailing: " + ((await page.locator("text=Extras (opcional)").count()) === 0));
 
 // Today: slots that start in less than 2 hours.
 await page.locator("section", { hasText: "Día y horario" }).locator("button[aria-pressed]").nth(0).click();

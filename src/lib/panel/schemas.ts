@@ -61,6 +61,7 @@ export const serviceSchema = z.object({
     .int("Lugares que ocupa: escribe un número entero.")
     .min(0, "Lugares que ocupa: mínimo 0.")
     .max(20, "Lugares que ocupa: máximo 20."),
+  includesExtras: checkbox,
   active: checkbox,
   sortOrder,
 });

@@ -88,6 +88,7 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
 - El resumen oficial lo arma la Server Action `prepareQuote` (`src/app/[slug]/actions.ts`): recibe solo ids y
   datos del cliente (Zod en `src/lib/booking-request.ts`, con honeypot), vuelve a leer la BD y revisa el horario.
 - Lugares: cada franja tiene `capacity` lugares; cada servicio ocupa `capacity_units` (reserva = suma, mínimo 1).
+- Un servicio principal con `includes_extras` (Full detailing) oculta los extras y `calculateQuote` los ignora.
   Lo ocupado sale de la función `public.slot_usage` (solo conteos; las reservas no son públicas).
 
 ## Estructura

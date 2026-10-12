@@ -4,7 +4,8 @@
 
 export type QuoteCatalog = {
   vehicleTypes: { id: string; name: string }[];
-  services: { id: string; name: string; kind: "base" | "extra"; capacityUnits: number }[];
+  // includesExtras: a main service that already includes every extra (e.g. Full detailing).
+  services: { id: string; name: string; kind: "base" | "extra"; capacityUnits: number; includesExtras?: boolean }[];
   prices: { serviceId: string; vehicleTypeId: string; priceCents: number }[];
   zones: { id: string; name: string; surchargeCents: number }[];
   deposit: { type: "percent" | "fixed"; value: number };
@@ -76,7 +77,9 @@ export function calculateQuote(catalog: QuoteCatalog, selection: QuoteSelection)
   lines.push({ serviceId: base.id, name: base.name, kind: "base", priceCents: basePrice });
   capacityUnits += base.capacityUnits;
 
-  for (const extraId of new Set(selection.extraServiceIds)) {
+  // Extras are never charged on top of a service that already includes them.
+  const extraIds = base.includesExtras ? [] : new Set(selection.extraServiceIds);
+  for (const extraId of extraIds) {
     const extra = catalog.services.find((service) => service.id === extraId && service.kind === "extra");
     const extraPrice = extra && priceOf(catalog, extra.id, vehicle.id);
     if (!extra || extraPrice === undefined) return { ok: false, error: "extra_service" };

@@ -50,7 +50,7 @@ export async function getBookingData(supabase: SupabaseClient, slug: string, now
     supabase.from("vehicle_types").select("id, name").eq("business_id", business.id).eq("active", true).order("sort_order"),
     supabase
       .from("services")
-      .select("id, name, description, kind, capacity_units")
+      .select("id, name, description, kind, capacity_units, includes_extras")
       .eq("business_id", business.id)
       .eq("active", true)
       .order("sort_order"),
@@ -94,6 +94,7 @@ export async function getBookingData(supabase: SupabaseClient, slug: string, now
         description: row.description,
         kind: row.kind,
         capacityUnits: row.capacity_units,
+        includesExtras: row.includes_extras,
       })),
       prices: (prices.data ?? []).map((row) => ({
         serviceId: row.service_id,

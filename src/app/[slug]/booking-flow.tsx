@@ -53,8 +53,11 @@ export function BookingFlow({
   // Choices that stop making sense (another vehicle, a full slot) are dropped here
   // instead of in effects, so the screen never shows an impossible combination.
   const offered = vehicleTypeId ? servicesForVehicle(catalog, vehicleTypeId) : { base: [], extras: [] };
-  const base = offered.base.some((service) => service.id === baseServiceId) ? baseServiceId : null;
-  const extras = extraIds.filter((id) => offered.extras.some((service) => service.id === id));
+  const baseService = offered.base.find((service) => service.id === baseServiceId) ?? null;
+  const base = baseService?.id ?? null;
+  // A service like Full detailing already includes every extra: hide them.
+  const extrasAllowed = !baseService?.includesExtras;
+  const extras = extrasAllowed ? extraIds.filter((id) => offered.extras.some((service) => service.id === id)) : [];
   const result =
     vehicleTypeId && base
       ? calculateQuote(catalog, { vehicleTypeId, baseServiceId: base, extraServiceIds: extras, zoneId })
@@ -154,13 +157,14 @@ export function BookingFlow({
                   <span className="font-semibold">{formatMXN(service.priceCents)}</span>
                 </span>
                 {service.description && <span className="mt-1 block text-sm opacity-80">{service.description}</span>}
+                {service.includesExtras && <span className="mt-1 block text-sm opacity-80">Incluye todos los extras.</span>}
               </Choice>
             ))}
           </div>
         )}
       </Step>
 
-      {vehicleTypeId && base && offered.extras.length > 0 && (
+      {vehicleTypeId && base && extrasAllowed && offered.extras.length > 0 && (
         <Step number={3} title="Extras (opcional)">
           <div className="space-y-2">
             {offered.extras.map((service) => (

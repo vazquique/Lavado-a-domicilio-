@@ -8,7 +8,7 @@ const catalog: QuoteCatalog = {
   ],
   services: [
     { id: "wash", name: "Lavado normal", kind: "base", capacityUnits: 1 },
-    { id: "full", name: "Full detailing", kind: "base", capacityUnits: 3 },
+    { id: "full", name: "Full detailing", kind: "base", capacityUnits: 3, includesExtras: true },
     { id: "wax", name: "Cera", kind: "extra", capacityUnits: 0 },
     { id: "ceramic", name: "Tratamiento cerámico", kind: "extra", capacityUnits: 1 },
     { id: "lights", name: "Restauración de faros", kind: "extra", capacityUnits: 0 },
@@ -74,6 +74,15 @@ describe("calculateQuote", () => {
     expect(wash.ok && wash.quote.capacityUnits).toBe(1);
     expect(withCeramic.ok && withCeramic.quote.capacityUnits).toBe(2);
     expect(full.ok && full.quote.capacityUnits).toBe(3);
+  });
+
+  test("a service that includes the extras never charges them again", () => {
+    const result = calculateQuote(catalog, select({ baseServiceId: "full", extraServiceIds: ["wax", "ceramic"] }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.quote.lines.map((line) => line.name)).toEqual(["Full detailing"]);
+    expect(result.quote.totalCents).toBe(150000);
+    expect(result.quote.capacityUnits).toBe(3);
   });
 
   test("zone can be left for later (no surcharge yet)", () => {

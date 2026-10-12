@@ -180,4 +180,5 @@ Respuestas del dueño y cambios de alcance aprobados, en orden.
   (mensaje con vehículo, servicios, colonia, fecha, horario, dirección, datos y montos).
 - Protección contra spam: honeypot desde ahora; el límite de intentos por IP se agrega con la creación de
   reservas (siguiente hito), que es cuando se guarda algo.
-- Pendiente preguntar: si al elegir Full detailing se deben ocultar los extras (ya los incluye).
+- Servicios principales que "incluyen todos los extras" (Full detailing): al elegirlos se ocultan los extras y
+  nunca se cobran aparte. Se marca por servicio en el panel (aprobado por el dueño).
