@@ -1,6 +1,6 @@
 name: Auth settings
 
-# Applies supabase/auth (site URL, allowed redirects, Spanish login email, Resend SMTP)
+# Applies supabase/auth (site URL, allowed redirects, Resend SMTP, Spanish login email)
 # to the Supabase project through the Management API.
 # The SUPABASE_ACCESS_TOKEN needs Auth Config and Project Settings with Read-write access.
 on:
@@ -20,8 +20,8 @@ jobs:
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
       - name: Apply auth settings
@@ -30,25 +30,33 @@ jobs:
             echo "::notice::Supabase secrets are not set yet; auth settings were not applied."
             exit 0
           fi
-          if [ -z "$RESEND_API_KEY" ]; then
-            echo "::warning::RESEND_API_KEY is not set; login emails will use Supabase's limited sender."
+
+          # patch <part>: sends one part of the settings; the error body never contains our secrets.
+          patch() {
+            node supabase/auth/build-settings.mjs "$1" > "$RUNNER_TEMP/$1.json"
+            status=$(curl -sS -o "$RUNNER_TEMP/response.json" -w "%{http_code}" -X PATCH \
+              "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth" \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data @"$RUNNER_TEMP/$1.json")
+            echo "$1: HTTP $status"
+            if [ "$status" = "401" ] || [ "$status" = "403" ]; then
+              echo "::warning::The Supabase token can't change auth settings. It needs Auth Config and Project Settings with Read-write access."
+              exit 0
+            fi
+            if [ "$status" -ge 300 ]; then
+              cat "$RUNNER_TEMP/response.json"; echo
+              exit 1
+            fi
+          }
+
+          patch settings
+          if [ -n "$RESEND_API_KEY" ]; then
+            patch email
+          else
+            echo "::warning::RESEND_API_KEY is not set: the Spanish login email (with the 6-digit code) can't be applied until it is."
           fi
-          node supabase/auth/build-settings.mjs > "$RUNNER_TEMP/auth-settings.json"
-          status=$(curl -sS -o "$RUNNER_TEMP/response.json" -w "%{http_code}" -X PATCH \
-            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth" \
-            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
-            -H "Content-Type: application/json" \
-            --data @"$RUNNER_TEMP/auth-settings.json")
-          echo "HTTP $status"
-          if [ "$status" = "401" ] || [ "$status" = "403" ]; then
-            echo "::warning::The Supabase token can't change auth settings yet. It needs Auth Config and Project Settings with Read-write access."
-            exit 0
-          fi
-          if [ "$status" -ge 300 ]; then
-            # The error body never contains our secrets, only the reason.
-            cat "$RUNNER_TEMP/response.json"; echo
-            exit 1
-          fi
+
           node -e '
             const r = require(process.env.RUNNER_TEMP + "/response.json");
             const keys = ["site_url", "uri_allow_list", "disable_signup", "mailer_otp_length", "smtp_host", "smtp_admin_email", "smtp_sender_name", "mailer_subjects_magic_link"];
