@@ -23,7 +23,12 @@ await page.click("button:has-text('Lavado normal')");
 step("bar after base: " + (await bar()));
 await page.click("button[role=checkbox]:has-text('Restauración de faros')");
 step("bar after extra: " + (await bar()));
-step("car drawing: " + (await page.locator("svg.car-diagram").first().getAttribute("aria-label")));
+step("car drawing: " + (await page.locator("svg[role=img].car-diagram").first().getAttribute("aria-label")));
+// "¿Qué es esto?" explains the service in plain words, with its steps.
+const faros = page.locator("div.rounded-2xl", { hasText: "Restauración de faros" }).first();
+await faros.locator("button[aria-expanded]").click();
+step("explainer: " + (await faros.locator("p.leading-relaxed").innerText()).slice(0, 60) + "… steps: " + (await faros.locator("ol li").count()));
+await faros.locator("button[aria-expanded]").click();
 step("tabs: " + JSON.stringify(await page.locator("[role=tab]").allInnerTexts()));
 await page.click("[role=tab]:has-text('Interior')");
 step("interior extras: " + JSON.stringify(await page.locator("[role=tabpanel] button span.font-medium").allInnerTexts()));

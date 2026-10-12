@@ -10,6 +10,8 @@ export type BookingService = QuoteCatalog["services"][number] & {
   description: string;
   area: ServiceArea;
   carParts: CarPart[];
+  // Plain-language explanation for customers (src/lib/service-explainers.ts).
+  explainer: string | null;
 };
 
 // Everything the public booking page needs for one business. Plain data, so it can
@@ -55,7 +57,7 @@ export async function getBookingData(supabase: SupabaseClient, slug: string, now
     supabase.from("vehicle_types").select("id, name").eq("business_id", business.id).eq("active", true).order("sort_order"),
     supabase
       .from("services")
-      .select("id, name, description, kind, capacity_units, includes_extras, area, car_parts")
+      .select("id, name, description, kind, capacity_units, includes_extras, area, car_parts, explainer")
       .eq("business_id", business.id)
       .eq("active", true)
       .order("sort_order"),
@@ -102,6 +104,7 @@ export async function getBookingData(supabase: SupabaseClient, slug: string, now
         includesExtras: row.includes_extras,
         area: row.area === "interior" ? "interior" : "exterior",
         carParts: ((row.car_parts as unknown[] | null) ?? []).filter(isCarPart),
+        explainer: row.explainer,
       })),
       prices: (prices.data ?? []).map((row) => ({
         serviceId: row.service_id,

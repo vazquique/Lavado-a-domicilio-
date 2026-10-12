@@ -10,3 +10,8 @@ export function readableTextColor(hex: string): "#000000" | "#ffffff" {
   // Contrast against white vs. against black (WCAG formula).
   return (1.05 / (luminance + 0.05)) >= ((luminance + 0.05) / 0.05) ? "#ffffff" : "#000000";
 }
+
+// A light version of a color, for backgrounds: `percent` of the color over white.
+export function tintColor(color: string, percent = 14): string {
+  return `color-mix(in oklab, ${color} ${percent}%, white)`;
+}

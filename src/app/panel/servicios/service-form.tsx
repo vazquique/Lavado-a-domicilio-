@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CarDiagram } from "@/components/car-diagram";
+import { ServiceExplainer } from "@/components/service-explainer";
 import { DeleteButton } from "@/components/panel/delete-button";
 import { CheckboxField, Field, FormFooter, selectClassName } from "@/components/panel/form-bits";
 import { useFormAction } from "@/components/panel/use-form-action";
@@ -17,6 +18,7 @@ import {
   type ServiceArea,
 } from "@/lib/car-parts";
 import { centsToPesosInput } from "@/lib/panel/parse";
+import { EXPLAINER_IDS, EXPLAINERS, getExplainer } from "@/lib/service-explainers";
 import { deleteService, saveService } from "./actions";
 
 export type ServiceValues = {
@@ -30,6 +32,7 @@ export type ServiceValues = {
   sortOrder: number;
   area: ServiceArea;
   carParts: CarPart[];
+  explainer: string | null;
   prices: Record<string, number>;
 };
 
@@ -79,6 +82,8 @@ export function ServiceForm({
       </div>
 
       <CarPartsField defaultParts={service?.carParts ?? []} color={brandColor} />
+
+      <ExplainerField id={`explainer-${key}`} defaultValue={service?.explainer ?? ""} color={brandColor} />
 
       <Field
         label="Lugares que ocupa"
@@ -193,5 +198,37 @@ function CarPartsField({ defaultParts, color }: { defaultParts: CarPart[]; color
         </div>
       </div>
     </fieldset>
+  );
+}
+
+// Which plain-language explanation customers see under "¿Qué es esto?", with a preview.
+function ExplainerField({ id, defaultValue, color }: { id: string; defaultValue: string; color: string }) {
+  const [value, setValue] = useState(defaultValue);
+  const explainer = getExplainer(value);
+  return (
+    <Field label="Explicación para el cliente" htmlFor={id} hint="Lo que ve el cliente al tocar “¿Qué es esto?”.">
+      <select
+        id={id}
+        name="explainer"
+        defaultValue={defaultValue}
+        onChange={(event) => setValue(event.target.value)}
+        className={selectClassName}
+      >
+        <option value="">Sin explicación</option>
+        {EXPLAINER_IDS.map((explainerId) => (
+          <option key={explainerId} value={explainerId}>
+            {EXPLAINERS[explainerId].name}
+          </option>
+        ))}
+      </select>
+      {explainer && (
+        <details className="rounded-lg border bg-muted/40 p-3">
+          <summary className="cursor-pointer text-sm font-medium">Ver cómo la ve el cliente</summary>
+          <div className="mt-3">
+            <ServiceExplainer explainer={explainer} icon="complete" color={color} />
+          </div>
+        </details>
+      )}
+    </Field>
   );
 }

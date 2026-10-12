@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CAR_PARTS, SERVICE_AREAS } from "@/lib/car-parts";
+import { EXPLAINER_IDS, type ExplainerId } from "@/lib/service-explainers";
 import { normalizeMxPhone, parsePesos } from "./parse";
 
 // Validation for the panel forms. Messages are shown to the owner as-is.
@@ -67,6 +68,11 @@ export const serviceSchema = z.object({
   // Which tab the extra shows up in, and the parts of the car it lights up.
   area: z.enum(SERVICE_AREAS, { error: "Área: elige exterior o interior." }),
   carParts: z.array(z.enum(CAR_PARTS, { error: "Partes del auto: elige de la lista." })).max(CAR_PARTS.length),
+  // Plain-language explanation customers can open ("¿Qué es esto?").
+  explainer: z.preprocess(
+    (value) => (value === "" || value === undefined ? null : value),
+    z.enum(EXPLAINER_IDS as [ExplainerId, ...ExplainerId[]], { error: "Explicación: elige de la lista." }).nullable(),
+  ),
 });
 
 export const vehicleTypeSchema = z.object({

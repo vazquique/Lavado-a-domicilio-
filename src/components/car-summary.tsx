@@ -38,12 +38,17 @@ const ICONS: Record<ServiceIcon, LucideIcon> = {
   dashboard: Gauge,
 };
 
-// Round badge with the picture of a service (see serviceIcon()).
-export function ServiceIconBadge({ icon, className, style }: { icon: ServiceIcon; className?: string; style?: CSSProperties }) {
+// The picture of a service (see serviceIcon()).
+export function ServiceGlyph({ icon, className, style }: { icon: ServiceIcon; className?: string; style?: CSSProperties }) {
   const Icon = ICONS[icon];
+  return <Icon className={className} style={style} aria-hidden />;
+}
+
+// Round badge with the picture of a service.
+export function ServiceIconBadge({ icon, className, style }: { icon: ServiceIcon; className?: string; style?: CSSProperties }) {
   return (
     <span className={cn("flex size-11 shrink-0 items-center justify-center rounded-xl", className)} style={style}>
-      <Icon className="size-5" aria-hidden />
+      <ServiceGlyph icon={icon} className="size-5" />
     </span>
   );
 }

@@ -41,8 +41,9 @@ export type ServiceIcon = CarPart | "wash" | "complete";
 // otherwise the most specific part it works on.
 const ICON_PRIORITY: CarPart[] = ["wheels", "lights", "windows", "trim", "dashboard", "seats", "floors", "body"];
 export function serviceIcon(service: { kind: "base" | "extra"; area: ServiceArea; carParts: readonly CarPart[] }): ServiceIcon {
-  if (service.carParts.length >= 5) return "complete";
+  if (service.carParts.length === CAR_PARTS.length) return "complete";
   if (service.kind === "base") return "wash";
+  if (service.carParts.length >= 5) return "complete";
   return ICON_PRIORITY.find((part) => service.carParts.includes(part)) ?? (service.area === "interior" ? "seats" : "body");
 }
 

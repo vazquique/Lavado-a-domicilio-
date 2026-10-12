@@ -217,3 +217,13 @@ Respuestas del dueño y cambios de alcance aprobados, en orden.
   su grupo.
 - Áreas, partes y orden inicial de JB's Bros los puso Claude; el dueño puede cambiarlos.
 - El pago con Mercado Pago está listo pero espera las llaves de prueba (el dueño las pondrá después).
+
+### 2026-10-12 — Página más gráfica y explicaciones de cada servicio (pedido del dueño)
+- Lavado normal incluye lavado, aspirado y limpieza rápida de paneles y tablero (lo dijo el dueño): ya se
+  ilumina así en el dibujo y es su descripción.
+- Cada servicio puede tener una explicación en palabras simples ("¿Qué es esto?"): qué es, antes y después, los
+  pasos con dibujos y el resultado. Se elige de una lista que trae la app (14 servicios comunes de lavado y
+  detallado), así sirve igual para otros negocios. Sin prometer cuánto dura cada tratamiento.
+- Más decoración: encabezado con el color del negocio, burbujas y un auto; sección "¿Cómo funciona?" en 4 pasos;
+  íconos en cada paso; siluetas de carro y camioneta al elegir el vehículo.
+- En el panel, cada servicio tiene "Explicación para el cliente" con vista previa.

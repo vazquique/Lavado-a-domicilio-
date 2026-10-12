@@ -5,7 +5,8 @@ import { getBookingData } from "@/lib/booking-data";
 import { createPublicClient } from "@/lib/supabase/public";
 import { whatsAppLink } from "@/lib/whatsapp";
 import { BookingFlow } from "./booking-flow";
-import { BusinessHeader } from "./business-header";
+import { BusinessHero } from "./business-hero";
+import { HowItWorks } from "./how-it-works";
 
 export default function BusinessPage({ params }: PageProps<"/[slug]">) {
   return (
@@ -43,7 +44,8 @@ async function Booking({ slug }: { slug: string }) {
 
   return (
     <div className="space-y-6">
-      <BusinessHeader business={business} tagline="Lavado de autos a domicilio. Cotiza y aparta en un minuto." />
+      <BusinessHero business={business} />
+      <HowItWorks color={business.brandColor} />
       <BookingFlow data={data} now={now.toISOString()} askZoneUrl={askZoneUrl} />
     </div>
   );

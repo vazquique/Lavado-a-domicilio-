@@ -21,6 +21,7 @@ describe("serviceSchema", () => {
       active: "on",
       area: "interior",
       carParts: ["seats", "floors"],
+      explainer: "asientos-suelos",
     });
     expect(result).toEqual({
       id: undefined,
@@ -32,7 +33,15 @@ describe("serviceSchema", () => {
       active: true,
       area: "interior",
       carParts: ["seats", "floors"],
+      explainer: "asientos-suelos",
     });
+  });
+
+  test("the explanation is optional but must be one of ours", () => {
+    const base = { name: "Cera", kind: "extra", capacityUnits: "0", area: "exterior", carParts: [] };
+    expect(serviceSchema.parse({ ...base, explainer: "" }).explainer).toBeNull();
+    expect(serviceSchema.parse(base).explainer).toBeNull();
+    expect(serviceSchema.safeParse({ ...base, explainer: "motor" }).success).toBe(false);
   });
 
   test("only known areas and car parts", () => {

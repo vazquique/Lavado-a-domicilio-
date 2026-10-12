@@ -1,8 +1,22 @@
 "use client";
 
-import { Armchair, Car, Check } from "lucide-react";
+import {
+  Armchair,
+  CalendarCheck,
+  Car,
+  Check,
+  ChevronDown,
+  CirclePlus,
+  Info,
+  MapPin,
+  Sparkles,
+  User,
+  type LucideIcon,
+} from "lucide-react";
 import { useState, useTransition, type CSSProperties, type ReactNode } from "react";
+import { VehicleSilhouette } from "@/components/car-illustrations";
 import { CarSummary, ServiceIconBadge } from "@/components/car-summary";
+import { ServiceExplainer } from "@/components/service-explainer";
 import { bookableDates, daysWithTimeLeft, slotsForDate, type SlotAvailability } from "@/lib/availability";
 import type { BookingData, BookingService } from "@/lib/booking-data";
 import {
@@ -23,6 +37,8 @@ import { formatClockTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import type { BookingRequest } from "@/lib/booking-request";
 import type { PaymentOption } from "@/lib/payment-options";
+import { getExplainer } from "@/lib/service-explainers";
+import { vehicleShape } from "@/lib/vehicle-shape";
 import { prepareQuote, startCheckout, type QuoteSummary } from "./actions";
 
 type Customer = { name: string; phone: string; address: string; references: string; email: string };
@@ -167,17 +183,33 @@ export function BookingFlow({
 
   return (
     <form id="booking-form" onSubmit={submit} className="space-y-8 pb-32" style={brandStyle}>
-      <Step number={1} title="Tu vehículo">
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          {catalog.vehicleTypes.map((vehicle) => (
-            <Choice key={vehicle.id} selected={vehicle.id === vehicleTypeId} onClick={() => setVehicleTypeId(vehicle.id)}>
-              {vehicle.name}
-            </Choice>
-          ))}
+      <Step number={1} title="Tu vehículo" icon={Car}>
+        <div className="grid grid-cols-3 gap-2">
+          {catalog.vehicleTypes.map((vehicle) => {
+            const selected = vehicle.id === vehicleTypeId;
+            return (
+              <button
+                key={vehicle.id}
+                type="button"
+                onClick={() => setVehicleTypeId(vehicle.id)}
+                aria-pressed={selected}
+                className={cn(
+                  "flex flex-col items-center gap-1.5 rounded-2xl border-2 bg-card px-2 pt-3 pb-2.5 text-center text-sm transition-colors",
+                  selected ? "border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-text)]" : "border-border",
+                )}
+              >
+                <VehicleSilhouette
+                  shape={vehicleShape(vehicle.name)}
+                  className={cn("h-9 w-20", selected ? "text-[var(--brand-text)]" : "text-[var(--brand)]")}
+                />
+                <span className="leading-tight font-medium">{vehicle.name}</span>
+              </button>
+            );
+          })}
         </div>
       </Step>
 
-      <Step number={2} title="Servicio">
+      <Step number={2} title="Servicio" icon={Sparkles}>
         {!vehicleTypeId ? (
           <Hint>Primero elige tu vehículo para ver los precios.</Hint>
         ) : (
@@ -188,6 +220,7 @@ export function BookingFlow({
                 service={service}
                 selected={service.id === base}
                 onClick={() => setBaseServiceId(service.id)}
+                color={data.business.brandColor}
               />
             ))}
           </div>
@@ -196,7 +229,7 @@ export function BookingFlow({
       </Step>
 
       {vehicleTypeId && base && extrasAllowed && offered.extras.length > 0 && (
-        <Step number={3} title="Extras (opcional)">
+        <Step number={3} title="Extras (opcional)" icon={CirclePlus}>
           {extraAreas.length > 1 && (
             <div role="tablist" aria-label="Extras" className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
               {extraAreas.map((area) => {
@@ -241,13 +274,14 @@ export function BookingFlow({
                   selected={extras.includes(service.id)}
                   onClick={() => toggleExtra(service.id)}
                   role="checkbox"
+                  color={data.business.brandColor}
                 />
               ))}
           </div>
         </Step>
       )}
 
-      <Step number={4} title="Tu colonia">
+      <Step number={4} title="Tu colonia" icon={MapPin}>
         <div className="flex flex-wrap gap-2">
           {catalog.zones.map((zone) => (
             <Chip
@@ -284,7 +318,7 @@ export function BookingFlow({
         )}
       </Step>
 
-      <Step number={5} title="Día y horario">
+      <Step number={5} title="Día y horario" icon={CalendarCheck}>
         {dates.length === 0 ? (
           <Hint>Por ahora no hay días disponibles. Escríbenos por WhatsApp.</Hint>
         ) : (
@@ -337,7 +371,7 @@ export function BookingFlow({
         )}
       </Step>
 
-      <Step number={6} title="Tus datos">
+      <Step number={6} title="Tus datos" icon={User}>
         <div className="space-y-3">
           <TextField
             label="Nombre"
@@ -588,80 +622,123 @@ function Summary({
   );
 }
 
-// A service the customer can pick: its picture, name, price and the parts of the car it covers.
+// A service the customer can pick: its picture, name, price and the parts of the car it
+// covers. "¿Qué es esto?" opens a plain explanation with pictures of how it's done.
 function ServiceCard({
   service,
   selected,
   onClick,
   role,
+  color,
 }: {
   service: BookingService & { priceCents: number };
   selected: boolean;
   onClick: () => void;
   role?: "checkbox";
+  color: string;
 }) {
+  const [open, setOpen] = useState(false);
+  const explainer = getExplainer(service.explainer);
+  const icon = serviceIcon(service);
   const labels = partsLabels(service.carParts);
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      role={role}
-      aria-checked={role === "checkbox" ? selected : undefined}
-      aria-pressed={role === "checkbox" ? undefined : selected}
+    <div
       className={cn(
-        "flex w-full items-start gap-3 rounded-2xl border-2 bg-card p-3 text-left transition-colors",
-        selected ? "border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-text)]" : "border-border",
+        "overflow-hidden rounded-2xl border-2 bg-card transition-colors",
+        selected ? "border-[var(--brand)]" : "border-border",
       )}
     >
-      <ServiceIconBadge
-        icon={serviceIcon(service)}
-        className={selected ? "bg-white/20" : "bg-[color-mix(in_oklab,var(--brand)_14%,white)] text-[var(--brand)]"}
-      />
-      <span className="min-w-0 flex-1">
-        <span className="flex justify-between gap-3">
-          <span className="font-medium">{service.name}</span>
-          <span className="shrink-0 font-semibold">
-            {role === "checkbox" ? "+" : ""}
-            {formatMXN(service.priceCents)}
+      <button
+        type="button"
+        onClick={onClick}
+        role={role}
+        aria-checked={role === "checkbox" ? selected : undefined}
+        aria-pressed={role === "checkbox" ? undefined : selected}
+        className={cn(
+          "flex w-full items-start gap-3 p-3 text-left transition-colors",
+          selected && "bg-[var(--brand)] text-[var(--brand-text)]",
+        )}
+      >
+        <ServiceIconBadge
+          icon={icon}
+          className={selected ? "bg-white/20" : "bg-[color-mix(in_oklab,var(--brand)_14%,white)] text-[var(--brand)]"}
+        />
+        <span className="min-w-0 flex-1">
+          <span className="flex justify-between gap-3">
+            <span className="font-medium">{service.name}</span>
+            <span className="shrink-0 font-semibold">
+              {role === "checkbox" ? "+" : ""}
+              {formatMXN(service.priceCents)}
+            </span>
           </span>
+          {service.description && <span className="mt-1 block text-sm opacity-80">{service.description}</span>}
+          {service.includesExtras && <span className="mt-1 block text-sm opacity-80">Incluye todos los extras.</span>}
+          {labels.length > 0 && (
+            <span className="mt-2 flex flex-wrap gap-1">
+              {labels.map((label) => (
+                <span
+                  key={label}
+                  className={cn("rounded-full px-2 py-0.5 text-xs", selected ? "bg-white/20" : "bg-muted text-muted-foreground")}
+                >
+                  {label}
+                </span>
+              ))}
+            </span>
+          )}
         </span>
-        {service.description && <span className="mt-1 block text-sm opacity-80">{service.description}</span>}
-        {service.includesExtras && <span className="mt-1 block text-sm opacity-80">Incluye todos los extras.</span>}
-        {labels.length > 0 && (
-          <span className="mt-2 flex flex-wrap gap-1">
-            {labels.map((label) => (
-              <span
-                key={label}
-                className={cn("rounded-full px-2 py-0.5 text-xs", selected ? "bg-white/20" : "bg-muted text-muted-foreground")}
-              >
-                {label}
-              </span>
-            ))}
+        {role === "checkbox" && (
+          <span
+            className={cn(
+              "mt-2.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2",
+              selected ? "border-current" : "border-border",
+            )}
+          >
+            {selected && <Check className="size-4" strokeWidth={3} aria-hidden />}
           </span>
         )}
-      </span>
-      {role === "checkbox" && (
-        <span
-          className={cn(
-            "mt-2.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2",
-            selected ? "border-current" : "border-border",
+      </button>
+      {explainer && (
+        <>
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            aria-expanded={open}
+            className="flex w-full items-center justify-center gap-1.5 border-t px-3 py-2 text-sm font-medium text-[var(--brand)]"
+          >
+            <Info className="size-4" aria-hidden />
+            {open ? "Ocultar explicación" : "¿Qué es esto? Mira cómo se hace"}
+            <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} aria-hidden />
+          </button>
+          {open && (
+            <div className="border-t bg-muted/40 p-4">
+              <ServiceExplainer explainer={explainer} icon={icon} color={color} />
+            </div>
           )}
-        >
-          {selected && <Check className="size-4" strokeWidth={3} aria-hidden />}
-        </span>
+        </>
       )}
-    </button>
+    </div>
   );
 }
 
-function Step({ number, title, children }: { number: number; title: string; children: ReactNode }) {
+function Step({
+  number,
+  title,
+  icon: Icon,
+  children,
+}: {
+  number: number;
+  title: string;
+  icon: LucideIcon;
+  children: ReactNode;
+}) {
   return (
     <section className="space-y-3">
-      <h2 className="flex items-center gap-2 text-lg font-semibold">
-        <span className="flex size-7 items-center justify-center rounded-full bg-[var(--brand)] text-sm text-[var(--brand-text)]">
+      <h2 className="flex items-center gap-2.5 text-lg font-semibold">
+        <span className="flex size-8 items-center justify-center rounded-full bg-[var(--brand)] text-sm text-[var(--brand-text)] shadow-sm ring-4 ring-[color-mix(in_oklab,var(--brand)_15%,white)]">
           {number}
         </span>
         {title}
+        <Icon className="ml-auto size-5 text-[var(--brand)] opacity-60" aria-hidden />
       </h2>
       {children}
     </section>

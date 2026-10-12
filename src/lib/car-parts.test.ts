@@ -14,14 +14,24 @@ describe("partsWorkedOn", () => {
 });
 
 describe("serviceIcon", () => {
-  test("packages that cover most of the car show the whole car", () => {
+  test("extras that cover most of the car show the whole car", () => {
     expect(
-      serviceIcon({ kind: "base", area: "exterior", carParts: ["body", "windows", "wheels", "lights", "trim"] }),
+      serviceIcon({ kind: "extra", area: "exterior", carParts: ["body", "windows", "wheels", "lights", "trim"] }),
     ).toBe("complete");
   });
 
-  test("main services show a wash", () => {
+  test("main services show a wash, unless they cover the whole car", () => {
     expect(serviceIcon({ kind: "base", area: "exterior", carParts: ["body", "windows", "wheels"] })).toBe("wash");
+    expect(
+      serviceIcon({ kind: "base", area: "exterior", carParts: ["body", "windows", "wheels", "floors", "dashboard"] }),
+    ).toBe("wash");
+    expect(
+      serviceIcon({
+        kind: "base",
+        area: "exterior",
+        carParts: ["body", "windows", "wheels", "lights", "trim", "seats", "floors", "dashboard"],
+      }),
+    ).toBe("complete");
   });
 
   test("extras show their most specific part", () => {

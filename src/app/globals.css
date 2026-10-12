@@ -85,3 +85,27 @@
     animation: none;
   }
 }
+
+/* Soap bubbles rising behind the booking page's header. */
+@keyframes hero-bubble {
+  0% {
+    transform: translateY(20px) scale(0.6);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(-280px) scale(1.15);
+    opacity: 0;
+  }
+}
+.hero-bubble {
+  animation: hero-bubble 7s ease-in infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-bubble {
+    animation: none;
+    opacity: 0.4;
+  }
+}

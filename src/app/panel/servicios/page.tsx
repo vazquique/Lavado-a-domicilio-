@@ -35,7 +35,7 @@ async function ServicesEditor() {
       .order("created_at"),
     supabase
       .from("services")
-      .select("id, name, description, kind, capacity_units, includes_extras, active, sort_order, area, car_parts")
+      .select("id, name, description, kind, capacity_units, includes_extras, active, sort_order, area, car_parts, explainer")
       .eq("business_id", business.id)
       .order("sort_order")
       .order("created_at"),
@@ -67,6 +67,7 @@ async function ServicesEditor() {
     sortOrder: service.sort_order,
     area: service.area === "interior" ? "interior" : "exterior",
     carParts: ((service.car_parts as unknown[] | null) ?? []).filter(isCarPart),
+    explainer: service.explainer,
     prices: pricesByService.get(service.id) ?? {},
   }));
   const groups = [

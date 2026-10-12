@@ -93,6 +93,9 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
 - Servicios: `area` (exterior/interior) y `car_parts` (partes del auto, `src/lib/car-parts.ts`). La página agrupa los
   extras en pestañas y `CarDiagram` (`src/components/car-diagram.tsx`) ilumina las partes elegidas; el panel los
   acomoda con flechas (`moveService`: orden 10, 20, 30… dentro de cada grupo).
+- Explicaciones para el cliente ("¿Qué es esto?"): `services.explainer` elige una de `src/lib/service-explainers.ts`
+  (texto simple, pasos con íconos, antes y después) que dibuja `src/components/service-explainer.tsx`. Para agregar
+  una, súmala a esa lista con su prueba; no prometer duraciones.
 
 ## Pagos (Mercado Pago)
 - Checkout Pro por REST en `src/lib/mercadopago.ts` (nombres de campos del SDK oficial `mercadopago` 3.x).

@@ -20,6 +20,7 @@ export async function saveService(_prev: ActionState, formData: FormData): Promi
     active: formData.get("active"),
     area: formData.get("area"),
     carParts: formData.getAll("carParts"),
+    explainer: formData.get("explainer"),
   });
   if (!parsed.success) return failure(firstError(parsed.error));
 
@@ -38,7 +39,7 @@ export async function saveService(_prev: ActionState, formData: FormData): Promi
     prices.push({ vehicleTypeId: vehicle.id, cents: price.data });
   }
 
-  const { id, name, description, kind, capacityUnits, includesExtras, active, area, carParts } = parsed.data;
+  const { id, name, description, kind, capacityUnits, includesExtras, active, area, carParts, explainer } = parsed.data;
   const values = {
     name,
     description,
@@ -49,6 +50,7 @@ export async function saveService(_prev: ActionState, formData: FormData): Promi
     active,
     area,
     car_parts: carParts,
+    explainer,
   };
 
   let saved;
