@@ -1,7 +1,8 @@
 name: Diagnose login email
 
-# Manual check of the panel login email: owner user, membership, SMTP settings and a
-# real "send code" call. Logs are public: the script prints no emails or secrets.
+# Manual check of the panel login: owner user and membership (creates the invited owner's
+# user if missing), SMTP settings, a real sign-in like the email button, and a real
+# "send code" call. Logs are public: the script prints no emails or secrets.
 on:
   workflow_dispatch:
 

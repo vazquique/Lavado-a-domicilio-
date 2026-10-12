@@ -76,28 +76,54 @@ console.log(
   "| emails per hour:", config.rate_limit_email_sent, "| seconds between emails:", config.smtp_max_frequency,
 );
 
+// A real sign-in like the email's "Entrar" button, without sending an email: proves the
+// site logs the owner in and the panel finds the business. Done before step 6 because a
+// new link replaces the owner's pending code, so the email sent last is the one that works.
+const site = config.site_url;
+const link = await fetch(`${base}/auth/v1/admin/generate_link`, {
+  method: "POST",
+  headers: { ...asAdmin, "Content-Type": "application/json" },
+  body: JSON.stringify({ type: "magiclink", email: ownerEmail }),
+});
+const tokenHash = (await link.json().catch(() => ({}))).hashed_token;
+hide(tokenHash);
+const confirm = await fetch(`${site}/auth/confirm?token_hash=${tokenHash}&type=magiclink`, { redirect: "manual" });
+const cookies = confirm.headers.getSetCookie().map((cookie) => cookie.split(";")[0]);
+const panel = await fetch(`${site}/panel`, { headers: { cookie: cookies.join("; ") }, redirect: "manual" });
+const panelHtml = panel.status === 200 ? await panel.text() : "";
+// Close that session again (scope "local": only this one).
+const sessionCookie = cookies.filter((cookie) => new RegExp(`^sb-${ref}-auth-token(\\.\\d+)?=`).test(cookie)).sort();
+let session = null;
+try {
+  const encoded = sessionCookie.map((cookie) => cookie.slice(cookie.indexOf("=") + 1)).join("");
+  session = JSON.parse(Buffer.from(encoded.replace(/^base64-/, ""), "base64url"));
+} catch {
+  // No session cookie, or a format this check doesn't know.
+}
+const logout = session
+  ? (await fetch(`${base}/auth/v1/logout?scope=local`, {
+      method: "POST",
+      headers: { apikey: publishable, Authorization: `Bearer ${session.access_token}` },
+    })).status
+  : "no session";
+console.log(
+  "5. Sign in like the email button:", link.status,
+  "| goes to:", new URL(confirm.headers.get("location") ?? "/", site).pathname,
+  "| session:", Boolean(session), "| panel:", panel.status,
+  "| shows the business:", panelHtml.includes("Ver mi página como cliente"), "| signed out:", logout,
+);
+
 // Same call the login page makes. If it works, the owner gets a real login email.
 const otp = await fetch(`${base}/auth/v1/otp`, {
   method: "POST",
   headers: { apikey: publishable, "Content-Type": "application/json" },
   body: JSON.stringify({ email: ownerEmail, create_user: false }),
 });
-console.log("5. Send login code:", otp.status, mask(await otp.text()));
+console.log("6. Send login code:", otp.status, mask(await otp.text()));
 
 if (!RESEND_API_KEY) {
-  console.log("6. RESEND_API_KEY is not set");
-} else if (otp.ok) {
-  // Supabase handed the email to Resend: see what Resend did with it.
-  const list = await fetch("https://api.resend.com/emails?limit=5", {
-    headers: { Authorization: `Bearer ${RESEND_API_KEY}` },
-  });
-  const body = await list.json().catch(() => ({}));
-  console.log("6. Resend recent emails:", list.status, list.ok ? "" : mask(JSON.stringify(body)));
-  for (const email of body.data ?? []) {
-    const toOwner = [email.to].flat().some((to) => String(to).toLowerCase() === ownerEmail);
-    console.log("  ", email.created_at, "| to owner:", toOwner, "| status:", email.last_event);
-  }
-} else {
+  console.log("7. RESEND_API_KEY is not set");
+} else if (!otp.ok) {
   // Supabase couldn't send it: try Resend directly to see Resend's own error.
   const send = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -110,7 +136,7 @@ if (!RESEND_API_KEY) {
     }),
   });
   const body = await send.text();
-  console.log("6. Resend direct send:", send.status, mask(body));
+  console.log("7. Resend direct send:", send.status, mask(body));
   if (body.includes("own email address")) {
     console.log("   Resend account email is the owner's:", body.toLowerCase().includes(ownerEmail));
   }
