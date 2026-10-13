@@ -65,14 +65,14 @@ describe("service explainers", () => {
     for (const row of rows) expect(EXPLAINER_IDS, row.name).toContain(row.explainer);
   });
 
-  test("Lavado normal also vacuums and wipes the dashboard and panels (the owner)", async () => {
+  test("Lavado normal is only washing, vacuuming and a quick clean, no plastics (the owner)", async () => {
     const { rows } = await db.query<{ car_parts: string[]; description: string; explainer: string }>(
       "select car_parts, description, explainer from public.services where business_id = $1 and name = 'Lavado normal'",
       [jbsId],
     );
     expect(rows[0]).toEqual({
-      car_parts: ["body", "windows", "wheels", "floors", "dashboard"],
-      description: "Lavado exterior, aspirado y limpieza rápida de paneles y tablero.",
+      car_parts: ["body", "windows", "wheels", "floors"],
+      description: "Lavado, aspirado y limpieza rápida.",
       explainer: "lavado-completo",
     });
   });
