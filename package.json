@@ -11,7 +11,7 @@
     "test": "vitest run",
     "check": "npm run lint && npm run typecheck && npm run test",
     "supabase:local": "node supabase/local/server.mjs",
-    "e2e": "node e2e/seed-cotizador.mjs && node e2e/panel.mjs && node e2e/login-link.mjs && node e2e/cotizador.mjs && node e2e/pago.mjs"
+    "e2e": "node e2e/seed-cotizador.mjs && node e2e/panel.mjs && node e2e/login-link.mjs && node e2e/cotizador.mjs && node e2e/pago.mjs && node e2e/agenda.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

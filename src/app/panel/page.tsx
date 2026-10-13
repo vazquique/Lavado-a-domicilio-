@@ -1,7 +1,9 @@
+import { CalendarDays, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { NoBusiness, PanelLoading } from "@/components/panel/section";
 import { Button } from "@/components/ui/button";
+import { todayInMexico } from "@/lib/dates";
 import { getPanelSession } from "@/lib/panel/session";
 import { signOut } from "./entrar/actions";
 
@@ -22,7 +24,20 @@ export default function PanelHomePage() {
 }
 
 async function PanelHome() {
-  const { business, email } = await getPanelSession();
+  const { supabase, business, email } = await getPanelSession();
+
+  // Services booked for today, for the agenda's button.
+  let todayCount = 0;
+  if (business) {
+    const { count, error } = await supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", business.id)
+      .eq("service_date", todayInMexico())
+      .in("status", ["confirmed", "completed", "no_show"]);
+    if (error) throw error;
+    todayCount = count ?? 0;
+  }
 
   return (
     <div className="space-y-6">
@@ -33,6 +48,19 @@ async function PanelHome() {
 
       {business ? (
         <>
+          <Link
+            href="/panel/agenda"
+            className="flex items-center gap-3 rounded-2xl bg-primary p-4 text-primary-foreground shadow-sm active:opacity-90"
+          >
+            <CalendarDays className="size-8 shrink-0" aria-hidden />
+            <span className="min-w-0 flex-1">
+              <span className="block text-lg font-semibold">Agenda</span>
+              <span className="block text-sm opacity-80">
+                {todayCount === 0 ? "Hoy no tienes servicios" : `Hoy: ${todayCount === 1 ? "1 servicio" : `${todayCount} servicios`}`}
+              </span>
+            </span>
+            <ChevronRight className="size-5 shrink-0" aria-hidden />
+          </Link>
           <Button asChild variant="outline" className="w-full">
             <Link href={`/${business.slug}`}>Ver mi página como cliente</Link>
           </Button>

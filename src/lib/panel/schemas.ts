@@ -166,6 +166,41 @@ export const businessSettingsSchema = z
     return { ...values, depositValue };
   });
 
+const phoneField = (label: string) =>
+  z.string({ error: `${label}: escribe los 10 dígitos.` }).transform((value, ctx) => {
+    const phone = normalizeMxPhone(value);
+    if (!phone) {
+      ctx.addIssue({ code: "custom", message: `${label}: escribe los 10 dígitos, por ejemplo 33 1234 5678.` });
+      return z.NEVER;
+    }
+    return phone;
+  });
+
+// A booking the owner adds from the agenda (it came by WhatsApp or phone). Only choices and
+// the customer's details: the price comes from the catalog on the server.
+export const manualBookingSchema = z.object({
+  vehicleTypeId: z.uuid({ error: "Elige el vehículo." }),
+  baseServiceId: z.uuid({ error: "Elige el servicio." }),
+  extraServiceIds: z.array(z.uuid({ error: "Extras: elige de la lista." })).max(30),
+  zoneId: z.preprocess((value) => (value === "" || value === null ? null : value), z.uuid().nullable()),
+  date: z.iso.date({ error: "Elige el día." }),
+  timeSlotId: z.uuid({ error: "Elige el horario." }),
+  customerName: requiredText("Nombre del cliente", 100),
+  customerPhone: phoneField("Celular del cliente"),
+  address: requiredText("Dirección", 300),
+  references: optionalText("Referencias", 300),
+  email: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? null : value),
+    z.email("Correo: revisa que esté bien escrito.").trim().toLowerCase().max(254).nullable(),
+  ),
+  notes: optionalText("Notas", 1000),
+});
+
+export const bookingNotesSchema = z.object({
+  id: z.uuid({ error: "No se encontró la reserva." }),
+  notes: optionalText("Notas", 1000),
+});
+
 export function firstError(error: z.ZodError): string {
   return error.issues[0]?.message ?? "Revisa los datos.";
 }

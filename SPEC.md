@@ -239,3 +239,18 @@ Respuestas del dueño y cambios de alcance aprobados, en orden.
   lodo → limpio y aspirado; tablero con polvo y un dedazo → como nuevo; cuero agrietado → suave.
 - El cliente desliza la herramienta del servicio (espuma, cepillo, spray, barra de arcilla…) para pasar de antes a
   después. Al abrir la explicación la herramienta se mueve sola una vez para enseñar que se puede deslizar.
+
+### 2026-10-13 — Agenda del panel (pedido del dueño)
+- El dueño pidió un calendario para llevar la agenda, reagendar con un toque, clientes de planta con
+  mantenimientos y suscripciones. Se hace en tres hitos, en este orden: 1) agenda, 2) clientes de planta y
+  mantenimientos (nuevo alcance), 3) membresías (Parte 2 de este documento).
+- Agenda en el panel (primera opción): calendario del mes con qué tan lleno va cada día, y la lista del día por
+  franja. En cada reserva: recordatorio por WhatsApp al cliente, llamar, notas, terminado, ya pagó (saldo),
+  reagendar, no llegó y cancelar (con confirmación). Terminado y "no llegó" se pueden deshacer; cancelar no, porque
+  su lugar ya pudo ocuparse.
+- Reagendar revisa que haya lugar en la nueva franja. El dueño puede mover o agregar reservas en días que no
+  trabaja o bloqueados (se le avisa); los clientes en línea siguen sin poder elegirlos.
+- Reservas manuales (las de WhatsApp o teléfono): nacen confirmadas, ocupan lugar, precio del catálogo y se cobran
+  completas el día del servicio (sin anticipo). La colonia es opcional ("Otra, sin recargo").
+- Sin mapas ni rutas (fuera de alcance): la dirección se muestra como texto.
+

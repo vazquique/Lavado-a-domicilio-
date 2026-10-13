@@ -1,11 +1,19 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-export function SectionHeader({ title, description }: { title: string; description?: string }) {
+export function SectionHeader({
+  title,
+  description,
+  back = { href: "/panel", label: "Panel" },
+}: {
+  title: string;
+  description?: string;
+  back?: { href: string; label: string };
+}) {
   return (
     <header className="space-y-1">
-      <Link href="/panel" className="text-sm text-muted-foreground">
-        ← Panel
+      <Link href={back.href} className="text-sm text-muted-foreground">
+        ← {back.label}
       </Link>
       <h1 className="text-2xl font-bold">{title}</h1>
       {description && <p className="text-sm text-muted-foreground">{description}</p>}

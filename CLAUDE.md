@@ -27,7 +27,7 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
 - `npm run build` — build de producción (lo mismo que corre Vercel)
 - `npm run supabase:local` — Supabase local de mentira (PGlite + migraciones reales + RLS) en :54321,
   para correr la app completa sin internet hacia Supabase. Variables en `.env.example`; código de acceso 123456.
-- `npm run e2e` — recorre el panel, el login por enlace, el cotizador y el pago con Chromium (necesita
+- `npm run e2e` — recorre el panel, el login por enlace, el cotizador, el pago y la agenda con Chromium (necesita
   `npm run supabase:local` recién iniciado y `next start` en :3300 con `.env.local` apuntando a él). Capturas en
   `e2e/screenshots/`.
 
@@ -77,6 +77,14 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
   `<Suspense>`; cada Server Action llama `requirePanelBusiness()` y valida con Zod (`src/lib/panel/schemas.ts`).
 - Formularios: `useFormAction` (`src/components/panel/use-form-action.ts`) evita que React borre lo escrito
   cuando hay un error; tras guardar, la acción llama `refresh()`.
+- Agenda (`/panel/agenda`, primera opción del panel): calendario del mes (`?mes=YYYY-MM&dia=YYYY-MM-DD`, el día
+  elegido se guarda con `history.replaceState`) y las reservas del día por franja. Datos: `getAgendaMonth()`
+  (`src/lib/panel/agenda-data.ts`); reglas puras en `src/lib/agenda.ts` (estados y cambios permitidos: terminada y
+  "no llegó" se pueden deshacer, cancelada no). Recordatorio wa.me al cliente: `src/lib/reminder-message.ts`.
+- Reservas manuales (`/panel/agenda/nueva`) y reagendar pasan por `create_manual_booking` / `reschedule_booking`
+  (security definer, revisan que sea miembro, bloquean la franja y cuentan lugares con `private.used_units`). Las
+  manuales nacen confirmadas, sin anticipo, con precio del catálogo calculado en el servidor. Estado, notas y saldo
+  pagado son updates normales con RLS; fecha y montos no se pueden editar directo.
 - Configuración de Auth como código: `supabase/auth/` (URL del sitio, redirecciones, correo en español, SMTP de
   Resend) se aplica con `.github/workflows/auth-config.yml` vía Management API. El token necesita Auth Config y
   Project Settings en lectura-escritura. Secreto extra: `RESEND_API_KEY`.
