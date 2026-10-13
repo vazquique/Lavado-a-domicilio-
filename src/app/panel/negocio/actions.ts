@@ -2,7 +2,7 @@
 
 import { refresh } from "next/cache";
 import { dbFailure, failure, success, type ActionState } from "@/lib/panel/action-state";
-import { businessSettingsSchema, firstError } from "@/lib/panel/schemas";
+import { accessEmailSchema, businessSettingsSchema, firstError } from "@/lib/panel/schemas";
 import { requirePanelBusiness } from "@/lib/panel/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -72,3 +72,40 @@ export async function removeLogo(): Promise<ActionState> {
   refresh();
   return success("Logo quitado.");
 }
+
+// Lets someone else enter this panel with their email (for example, a partner).
+export async function grantAccess(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { supabase, business } = await requirePanelBusiness();
+  const parsed = accessEmailSchema.safeParse(formData.get("email"));
+  if (!parsed.success) return failure(firstError(parsed.error));
+
+  const { data, error } = await supabase.rpc("grant_business_access", {
+    p_business_id: business.id,
+    p_email: parsed.data,
+  });
+  if (error) return dbFailure(error);
+
+  refresh();
+  return success(
+    data === "member"
+      ? "Listo, ya puede entrar a tu panel."
+      : "Listo. Que entre a la página del panel con ese correo: le llegará un código.",
+  );
+}
+
+export async function revokeAccess(email: string): Promise<ActionState> {
+  const { supabase, business } = await requirePanelBusiness();
+  const parsed = accessEmailSchema.safeParse(email);
+  if (!parsed.success) return failure("No se encontró ese correo.");
+
+  const { data, error } = await supabase.rpc("revoke_business_access", {
+    p_business_id: business.id,
+    p_email: parsed.data,
+  });
+  if (error) return dbFailure(error);
+  if (data !== true) return failure("No se pudo quitar ese acceso.");
+
+  refresh();
+  return success("Acceso quitado.");
+}
+

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { centsToPesosInput } from "@/lib/panel/parse";
 import { cn } from "@/lib/utils";
-import { removeLogo, saveBusinessSettings, uploadLogo } from "./actions";
+import { grantAccess, removeLogo, saveBusinessSettings, uploadLogo } from "./actions";
 import { resizeImage } from "./resize-image";
 
 export type BusinessSettingsValues = {
@@ -144,3 +144,17 @@ export function LogoForm({ logoUrl }: { logoUrl: string | null }) {
     </form>
   );
 }
+
+// Gives someone else access to this panel by email.
+export function AccessForm() {
+  const { state, pending, formRef, onSubmit } = useFormAction(grantAccess, { resetOnSuccess: true });
+  return (
+    <form ref={formRef} onSubmit={onSubmit} className="space-y-3">
+      <Field label="Correo de la persona" htmlFor="access-email" hint="Entrará con un código que le llega a ese correo.">
+        <Input id="access-email" name="email" type="email" inputMode="email" autoComplete="off" required />
+      </Field>
+      <FormFooter state={state} pending={pending} label="Dar acceso" />
+    </form>
+  );
+}
+

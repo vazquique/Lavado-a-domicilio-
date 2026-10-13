@@ -22,6 +22,9 @@ const serviceStep = page.locator("section", { has: page.locator("h2", { hasText:
 step("services for car: " + (await serviceStep.innerText()).replace(/\s+/g, " "));
 await page.click("button:has-text('Lavado normal')");
 step("bar after base: " + (await bar()));
+// Extras stay folded until the customer asks for them.
+step("extras folded: " + (await page.locator("button[aria-expanded=false]:has-text('¿Le agregamos algo')").innerText()).replace(/\s+/g, " "));
+await page.click("button:has-text('¿Le agregamos algo')");
 await page.click("button[role=checkbox]:has-text('Restauración de faros')");
 step("bar after extra: " + (await bar()));
 step("car drawing: " + (await page.locator("svg[role=img].car-diagram").first().getAttribute("aria-label")));

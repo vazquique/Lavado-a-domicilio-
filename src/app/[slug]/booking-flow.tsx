@@ -2,13 +2,16 @@
 
 import {
   Armchair,
+  Banknote,
   CalendarCheck,
   Car,
   Check,
   ChevronDown,
   CirclePlus,
+  CreditCard,
   Info,
   MapPin,
+  Plus,
   Sparkles,
   User,
   type LucideIcon,
@@ -39,7 +42,7 @@ import type { BookingRequest } from "@/lib/booking-request";
 import type { PaymentOption } from "@/lib/payment-options";
 import { isExplainerId } from "@/lib/service-explainers";
 import { vehicleShape } from "@/lib/vehicle-shape";
-import { prepareQuote, startCheckout, type QuoteSummary } from "./actions";
+import { bookWithCash, prepareQuote, startCheckout, type QuoteSummary } from "./actions";
 
 type Customer = { name: string; phone: string; address: string; references: string; email: string };
 
@@ -56,10 +59,13 @@ export function BookingFlow({
   data,
   now: nowIso,
   askZoneUrl,
+  payOnline,
 }: {
   data: BookingData;
   now: string;
   askZoneUrl: string | null;
+  // Mercado Pago is connected: the bar can mention paying the deposit online.
+  payOnline: boolean;
 }) {
   const now = new Date(nowIso);
   const { catalog } = data;
@@ -72,6 +78,9 @@ export function BookingFlow({
   const [zoneId, setZoneId] = useState<string | null>(null);
   const [zoneMissing, setZoneMissing] = useState(false);
   const [extrasTab, setExtrasTab] = useState<ServiceArea>("exterior");
+  // Extras stay folded until the customer asks for them: who only wants the wash isn't
+  // flooded with options, and who opens them is interested.
+  const [showExtras, setShowExtras] = useState(false);
   const [date, setDate] = useState<string | null>(null);
   const [slotId, setSlotId] = useState<string | null>(null);
   const [customer, setCustomer] = useState<Customer>(EMPTY_CUSTOMER);
@@ -230,6 +239,38 @@ export function BookingFlow({
 
       {vehicleTypeId && base && extrasAllowed && offered.extras.length > 0 && (
         <Step number={3} title="Extras (opcional)" icon={CirclePlus}>
+          {!showExtras ? (
+            <button
+              type="button"
+              onClick={() => setShowExtras(true)}
+              aria-expanded={false}
+              className="flex w-full items-center gap-3 rounded-2xl border-2 border-dashed border-[color-mix(in_oklab,var(--brand)_45%,white)] bg-[color-mix(in_oklab,var(--brand)_6%,white)] p-4 text-left"
+            >
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[var(--brand)] text-[var(--brand-text)]">
+                <Plus className="size-6" aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold">
+                  {extras.length > 0
+                    ? `Llevas ${extras.length === 1 ? "1 extra" : `${extras.length} extras`}: ver o cambiar`
+                    : "¿Le agregamos algo a tu auto?"}
+                </span>
+                <span className="mt-0.5 block text-sm text-muted-foreground">
+                  {extras.length > 0
+                    ? offered.extras
+                        .filter((service) => extras.includes(service.id))
+                        .map((service) => service.name)
+                        .join(", ")
+                    : `Tenemos ${offered.extras.length} servicios extra, como ${offered.extras
+                        .slice(0, 2)
+                        .map((service) => service.name)
+                        .join(" y ")}. Si solo quieres tu ${baseService?.name ?? "servicio"}, sigue abajo.`}
+                </span>
+              </span>
+              <ChevronDown className="size-5 shrink-0 text-[var(--brand)]" aria-hidden />
+            </button>
+          ) : (
+            <>
           {extraAreas.length > 1 && (
             <div role="tablist" aria-label="Extras" className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
               {extraAreas.map((area) => {
@@ -278,6 +319,16 @@ export function BookingFlow({
                 />
               ))}
           </div>
+          <button
+            type="button"
+            onClick={() => setShowExtras(false)}
+            aria-expanded={true}
+            className="w-full text-center text-sm font-medium text-[var(--brand)]"
+          >
+            {extras.length > 0 ? "Listo con los extras" : "Ocultar extras"}
+          </button>
+            </>
+          )}
         </Step>
       )}
 
@@ -437,7 +488,11 @@ export function BookingFlow({
               {quote ? (
                 <>
                   <p className="text-lg font-bold">{formatMXN(quote.totalCents)}</p>
-                  <p className="text-muted-foreground">Anticipo {formatMXN(quote.depositCents)}</p>
+                  <p className="text-muted-foreground">
+                    {payOnline && quote.depositCents < quote.totalCents
+                      ? `o anticipo de ${formatMXN(quote.depositCents)} en línea`
+                      : "Pagas el día del servicio"}
+                  </p>
                 </>
               ) : (
                 <p className="text-muted-foreground">Elige vehículo y servicio</p>
@@ -475,25 +530,32 @@ function Summary({
   brandColor: string;
 }) {
   const { quote } = summary;
+  // Cash on the day unless the customer picks card or transfer (when Mercado Pago is on).
+  const [method, setMethod] = useState<"cash" | "online">("cash");
   const [option, setOption] = useState<PaymentOption>(summary.choices[0]?.option ?? "full");
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [error, setError] = useState("");
   const [paying, startPaying] = useTransition();
+  const [soon, setSoon] = useState(false);
+  const online = method === "online" && summary.payOnline;
   const amountCents = summary.choices.find((choice) => choice.option === option)?.amountCents ?? quote.totalCents;
 
-  function pay() {
+  function confirm() {
     setError("");
     if (!acceptTerms) {
       setError("Acepta la política de cancelación y el aviso de privacidad para continuar.");
       return;
     }
     startPaying(async () => {
-      const response = await startCheckout(request, { option, acceptTerms });
-      if (response.ok) {
-        window.location.assign(response.checkoutUrl);
-      } else {
-        setError(response.message);
+      if (online) {
+        const response = await startCheckout(request, { option, acceptTerms });
+        if (response.ok) window.location.assign(response.checkoutUrl);
+        else setError(response.message);
+        return;
       }
+      const response = await bookWithCash(request, { acceptTerms });
+      if (response.ok) window.location.assign(response.bookingUrl);
+      else setError(response.message);
     });
   }
 
@@ -510,8 +572,12 @@ function Summary({
         )}
         <div className="border-t pt-3">
           <Row label="Total" value={formatMXN(quote.totalCents)} strong />
-          <Row label={`Anticipo (${summary.depositLabel})`} value={formatMXN(quote.depositCents)} />
-          <Row label="Saldo el día del servicio" value={formatMXN(quote.balanceCents)} />
+          {online && option === "deposit" && (
+            <>
+              <Row label={`Anticipo (${summary.depositLabel})`} value={formatMXN(quote.depositCents)} />
+              <Row label="Saldo el día del servicio" value={formatMXN(quote.balanceCents)} />
+            </>
+          )}
         </div>
       </section>
       <CarSummary parts={parts} color={brandColor} title="Esto le haremos a tu auto" />
@@ -530,24 +596,66 @@ function Summary({
         </p>
       </section>
 
-      {summary.payOnline ? (
+      {summary.bookOnline ? (
         <>
           <section className="space-y-2">
-            <h3 className="font-semibold">¿Cuánto quieres pagar ahora?</h3>
-            {summary.choices.map((choice) => (
-              <Choice key={choice.option} selected={choice.option === option} onClick={() => setOption(choice.option)}>
-                <span className="flex justify-between gap-3">
-                  <span className="font-medium">{choice.option === "full" ? "Pagar todo" : "Solo el anticipo"}</span>
-                  <span className="font-semibold">{formatMXN(choice.amountCents)}</span>
+            <h3 className="font-semibold">¿Cómo quieres pagar?</h3>
+            <Choice selected={method === "cash"} onClick={() => setMethod("cash")}>
+              <span className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2 font-medium">
+                  <Banknote className="size-5" aria-hidden /> Efectivo
                 </span>
-                <span className="mt-1 block text-sm opacity-80">
-                  {choice.option === "full"
-                    ? "Ya no pagas nada el día del servicio."
-                    : `El resto, ${formatMXN(quote.totalCents - choice.amountCents)}, el día del servicio.`}
+                <span className="font-semibold">{formatMXN(quote.totalCents)}</span>
+              </span>
+              <span className="mt-1 block text-sm opacity-80">
+                Pagas el día del servicio. Tu lugar queda apartado desde ahora.
+              </span>
+            </Choice>
+            <Choice
+              selected={online}
+              onClick={() => {
+                if (summary.payOnline) setMethod("online");
+                else setSoon(true);
+              }}
+            >
+              <span className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2 font-medium">
+                  <CreditCard className="size-5" aria-hidden /> Tarjeta o transferencia
                 </span>
-              </Choice>
-            ))}
+                {!summary.payOnline && (
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+                    Muy pronto
+                  </span>
+                )}
+              </span>
+              <span className="mt-1 block text-sm opacity-80">
+                {summary.payOnline
+                  ? "Pagas en línea, en Mercado Pago: el anticipo o todo."
+                  : soon
+                    ? "Todavía no está listo. Por ahora elige efectivo y pagas el día del servicio."
+                    : "Pronto podrás pagar en línea."}
+              </span>
+            </Choice>
           </section>
+
+          {online && (
+            <section className="space-y-2">
+              <h3 className="font-semibold">¿Cuánto quieres pagar ahora?</h3>
+              {summary.choices.map((choice) => (
+                <Choice key={choice.option} selected={choice.option === option} onClick={() => setOption(choice.option)}>
+                  <span className="flex justify-between gap-3">
+                    <span className="font-medium">{choice.option === "full" ? "Pagar todo" : "Solo el anticipo"}</span>
+                    <span className="font-semibold">{formatMXN(choice.amountCents)}</span>
+                  </span>
+                  <span className="mt-1 block text-sm opacity-80">
+                    {choice.option === "full"
+                      ? "Ya no pagas nada el día del servicio."
+                      : `El resto, ${formatMXN(quote.totalCents - choice.amountCents)}, el día del servicio.`}
+                  </span>
+                </Choice>
+              ))}
+            </section>
+          )}
 
           <label className="flex items-start gap-3 rounded-xl border bg-card p-4 text-sm">
             <input
@@ -582,14 +690,22 @@ function Summary({
           )}
           <button
             type="button"
-            onClick={pay}
+            onClick={confirm}
             disabled={paying}
             className="block h-12 w-full rounded-lg bg-[var(--brand)] px-4 font-semibold text-[var(--brand-text)] disabled:opacity-60"
           >
-            {paying ? "Abriendo Mercado Pago…" : `Pagar ${formatMXN(amountCents)} con Mercado Pago`}
+            {paying
+              ? online
+                ? "Abriendo Mercado Pago…"
+                : "Agendando…"
+              : online
+                ? `Pagar ${formatMXN(amountCents)} con Mercado Pago`
+                : "Agendar"}
           </button>
           <p className="text-sm text-muted-foreground">
-            Tu lugar queda apartado 30 minutos mientras pagas. Puedes pagar con tarjeta o con tu saldo de Mercado Pago.
+            {online
+              ? "Tu lugar queda apartado 30 minutos mientras pagas."
+              : "Al agendar, tu lugar queda apartado y le llega tu reserva al negocio."}
           </p>
           {summary.whatsappUrl && (
             <a href={summary.whatsappUrl} className="block text-center text-sm font-medium underline">

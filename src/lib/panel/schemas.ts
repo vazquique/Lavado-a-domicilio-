@@ -201,6 +201,9 @@ export const bookingNotesSchema = z.object({
   notes: optionalText("Notas", 1000),
 });
 
+// Someone who will be able to enter the panel (they log in with a code sent to this email).
+export const accessEmailSchema = z.email("Escribe un correo válido.").trim().toLowerCase().max(254);
+
 export function firstError(error: z.ZodError): string {
   return error.issues[0]?.message ?? "Revisa los datos.";
 }

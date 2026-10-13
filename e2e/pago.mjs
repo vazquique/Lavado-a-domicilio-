@@ -32,7 +32,7 @@ async function emailsSent(expected) {
   return (await fetch(`${emulator}/resend/emails`)).json();
 }
 
-async function quote({ days, phone }) {
+async function quote({ days, phone, online = true }) {
   await page.goto(`${base}/jbsbros`);
   await page.click("button:has-text('Carro normal')");
   await page.click("button:has-text('Lavado normal')");
@@ -46,7 +46,11 @@ async function quote({ days, phone }) {
   await page.fill("input[name=phone]", phone);
   await page.fill("input[name=address]", "Av. Siempre Viva 742");
   await page.click("text=Ver resumen");
-  await page.waitForSelector("text=¿Cuánto quieres pagar ahora?");
+  await page.waitForSelector("text=¿Cómo quieres pagar?");
+  if (online) {
+    await page.click("button:has-text('Tarjeta o transferencia')");
+    await page.waitForSelector("text=¿Cuánto quieres pagar ahora?");
+  }
 }
 
 // 1. Deposit, approved; Mercado Pago's webhook confirms it.
@@ -106,7 +110,25 @@ step("second try confirmed");
 emails = await emailsSent(3);
 check(emails.length === 3, "one email per confirmed booking");
 
-// 4. Forged notifications are refused.
+// 4. Cash on the day: "Agendar" confirms right away, it shows up in the agenda and the
+// business gets an email.
+await quote({ days: 5, phone: "3311112222", online: false });
+step("cash choice: " + (await text("button[aria-pressed=true]:has-text('Efectivo')")));
+await page.check("input[name=acceptTerms]");
+await shot("23-efectivo-resumen");
+await page.click("button:text-is('Agendar')");
+await page.waitForURL(/\/jbsbros\/reserva\//);
+await page.waitForSelector("text=¡Listo! Tu reserva está confirmada");
+step("cash booked: " + (await text("section")) + " | " + (await text("section >> nth=1")));
+check((await text("section >> nth=1")).includes("en efectivo el día del servicio"), "says it's paid in cash on the day");
+const cashWa = decodeURIComponent(await page.locator("a:has-text('por WhatsApp')").getAttribute("href"));
+check(cashWa.includes("aparté mi lugar"), "WhatsApp says the slot was booked");
+await shot("24-efectivo-confirmado");
+emails = await emailsSent(4);
+step(`cash email: ${emails.at(-1)?.subject}`);
+check(emails.length === 4 && emails.at(-1).text.includes("paga en efectivo"), "the business is told it's cash");
+
+// 5. Forged notifications are refused.
 const forged = await fetch(`${base}/api/webhooks/mercadopago?data.id=9000001&type=payment`, {
   method: "POST",
   headers: { "x-signature": "ts=1,v1=abc", "x-request-id": "x", "content-type": "application/json" },
@@ -115,7 +137,7 @@ const forged = await fetch(`${base}/api/webhooks/mercadopago?data.id=9000001&typ
 step(`forged webhook: HTTP ${forged.status}`);
 check(forged.status === 401, "forged webhook refused");
 
-// 5. A booking link that doesn't exist.
+// 6. A booking link that doesn't exist.
 const missing = await page.goto(`${base}/jbsbros/reserva/00000000-0000-4000-8000-000000000000`);
 step(`unknown booking: HTTP ${missing.status()}`);
 

@@ -13,8 +13,8 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
-// Email to the business for each confirmed online booking. Customer details are escaped:
-// they are typed by whoever books.
+// Email to the business for each booking confirmed from the page (paid online or to pay
+// in cash on the day). Customer details are escaped: they are typed by whoever books.
 export function confirmedBookingEmail(booking: PaidBooking): Email {
   const date = formatLongDate(booking.serviceDate);
   const whatsapp = `https://wa.me/52${booking.customer.phone}`;
@@ -30,10 +30,11 @@ export function confirmedBookingEmail(booking: PaidBooking): Email {
     ["Servicios", booking.services.join(", ")],
   ];
   const money = paymentLines(booking);
+  const kind = booking.paidCents > 0 ? "nueva reserva pagada en línea" : "nueva reserva, paga en efectivo el día del servicio";
 
   const subject = `Nueva reserva ${booking.folio}: ${date}, ${booking.slot.name}`;
   const text = [
-    `${booking.businessName}: nueva reserva pagada en línea.`,
+    `${booking.businessName}: ${kind}.`,
     "",
     `Folio: ${booking.folio}`,
     ...details.map(([label, value]) => `${label}: ${value}`),
@@ -43,7 +44,7 @@ export function confirmedBookingEmail(booking: PaidBooking): Email {
     `Escribirle por WhatsApp: ${whatsapp}`,
   ].join("\n");
   const html = [
-    `<p>${escapeHtml(booking.businessName)}: nueva reserva pagada en línea.</p>`,
+    `<p>${escapeHtml(booking.businessName)}: ${kind}.</p>`,
     `<p style="font-size:20px;font-weight:bold;margin:16px 0">${escapeHtml(booking.folio)}</p>`,
     `<p>${details.map(([label, value]) => `<b>${label}:</b> ${escapeHtml(value)}`).join("<br>")}</p>`,
     `<p>${money.map(escapeHtml).join("<br>")}</p>`,

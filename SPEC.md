@@ -254,3 +254,15 @@ Respuestas del dueño y cambios de alcance aprobados, en orden.
   completas el día del servicio (sin anticipo). La colonia es opcional ("Otra, sin recargo").
 - Sin mapas ni rutas (fuera de alcance): la dirección se muestra como texto.
 
+### 2026-10-13 — Agendar desde la página con pago en efectivo (pedido del dueño)
+- El cliente puede agendar desde la página y pagar en efectivo el día del servicio: la reserva queda confirmada al
+  instante, ocupa su lugar, aparece sola en la agenda y le llega un correo al negocio. Cambia la regla de "anticipo
+  obligatorio": el anticipo con Mercado Pago queda como opción ("Tarjeta o transferencia"), que dice "Muy pronto"
+  mientras no esté configurado.
+- Contra spam: honeypot, el mismo límite por IP y máximo 3 reservas futuras por celular.
+- Los extras van plegados: al elegir el lavado aparece "¿Le agregamos algo a tu auto?" y se abren solo si el
+  cliente toca.
+- Acceso al panel: el dueño agrega o quita correos desde "Tu negocio". El correo de su socio no se escribe en el
+  código porque el repositorio es público; el dueño lo agrega desde el panel.
+- Orden acordado para lo que sigue: clientes de planta, cuenta del cliente frecuente y suscripciones.
+

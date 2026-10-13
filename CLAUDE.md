@@ -85,6 +85,10 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
   (security definer, revisan que sea miembro, bloquean la franja y cuentan lugares con `private.used_units`). Las
   manuales nacen confirmadas, sin anticipo, con precio del catálogo calculado en el servidor. Estado, notas y saldo
   pagado son updates normales con RLS; fecha y montos no se pueden editar directo.
+- Acceso al panel ("Tu negocio" → Acceso al panel): los miembros invitan por correo con `grant_business_access`
+  (si ya tiene usuario, entra directo; si no, queda en `business_invites` hasta su primer login), ven la lista con
+  `business_access` y quitan con `revoke_business_access` (nadie se quita a sí mismo). Nunca poner correos de
+  terceros en migraciones: el repo es público.
 - Configuración de Auth como código: `supabase/auth/` (URL del sitio, redirecciones, correo en español, SMTP de
   Resend) se aplica con `.github/workflows/auth-config.yml` vía Management API. El token necesita Auth Config y
   Project Settings en lectura-escritura. Secreto extra: `RESEND_API_KEY`.
@@ -96,6 +100,8 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
 - El resumen oficial lo arma la Server Action `prepareQuote` (`src/app/[slug]/actions.ts`): recibe solo ids y
   datos del cliente (Zod en `src/lib/booking-request.ts`, con honeypot), vuelve a leer la BD y revisa el horario.
 - Lugares: cada franja tiene `capacity` lugares; cada servicio ocupa `capacity_units` (reserva = suma, mínimo 1).
+- Los extras van plegados tras "¿Le agregamos algo a tu auto?" (pedido del dueño: no saturar a quien solo quiere el
+  lavado).
 - Un servicio principal con `includes_extras` (Full detailing) oculta los extras y `calculateQuote` los ignora.
   Lo ocupado sale de la función `public.slot_usage` (solo conteos; las reservas no son públicas).
 - Servicios: `area` (exterior/interior) y `car_parts` (partes del auto, `src/lib/car-parts.ts`). La página agrupa los
@@ -113,6 +119,10 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
 - Checkout Pro por REST en `src/lib/mercadopago.ts` (nombres de campos del SDK oficial `mercadopago` 3.x).
   Variables: `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_WEBHOOK_SECRET` y `RESEND_API_KEY` (correo al negocio). Sin
   Mercado Pago, el resumen ofrece WhatsApp.
+- El resumen pregunta "¿Cómo quieres pagar?": Efectivo (por defecto) o Tarjeta o transferencia (Mercado Pago; dice
+  "Muy pronto" si no está configurado). `bookWithCash` (mismas revisiones que el pago, más máximo 3 reservas futuras
+  por celular) llama `create_cash_booking`: confirmada al instante, sin anticipo, aparece en la agenda y manda el
+  correo al negocio (`emailBusiness`). La página de la reserva dice "en efectivo el día del servicio".
 - `startCheckout` (`src/app/[slug]/actions.ts`): Zod, honeypot y términos; límite por IP
   (`register_booking_attempt`); precio del servidor; aparta 30 min con `create_online_booking` (bloquea la franja
   para que dos clientes no ganen el último lugar) y crea la preferencia, que vence con el apartado.

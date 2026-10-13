@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { getBookingData } from "@/lib/booking-data";
+import { getMercadoPagoConfig } from "@/lib/mercadopago";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createPublicClient } from "@/lib/supabase/public";
 import { whatsAppLink } from "@/lib/whatsapp";
 import { BookingFlow } from "./booking-flow";
@@ -46,7 +48,12 @@ async function Booking({ slug }: { slug: string }) {
     <div className="space-y-6">
       <BusinessHero business={business} />
       <HowItWorks color={business.brandColor} />
-      <BookingFlow data={data} now={now.toISOString()} askZoneUrl={askZoneUrl} />
+      <BookingFlow
+        data={data}
+        now={now.toISOString()}
+        askZoneUrl={askZoneUrl}
+        payOnline={getMercadoPagoConfig() !== null && createAdminClient() !== null}
+      />
     </div>
   );
 }

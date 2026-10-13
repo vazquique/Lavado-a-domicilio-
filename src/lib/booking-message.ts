@@ -27,21 +27,24 @@ export function slotLabel(slot: PaidBooking["slot"]): string {
     : slot.name;
 }
 
-// Lines about the money, shared by the page, the message and the email.
+// Lines about the money, shared by the page, the message and the email. Nothing paid
+// online means the customer chose to pay cash on the day.
 export function paymentLines(booking: Pick<PaidBooking, "totalCents" | "paidCents" | "balanceCents">): string[] {
-  return booking.balanceCents === 0
-    ? [`Total: ${formatMXN(booking.totalCents)} (pagado completo)`]
-    : [
-        `Total: ${formatMXN(booking.totalCents)}`,
-        `Anticipo pagado: ${formatMXN(booking.paidCents)}`,
-        `Saldo el día del servicio: ${formatMXN(booking.balanceCents)}`,
-      ];
+  if (booking.balanceCents === 0) return [`Total: ${formatMXN(booking.totalCents)} (pagado completo)`];
+  if (booking.paidCents === 0) return [`Total: ${formatMXN(booking.totalCents)}, en efectivo el día del servicio`];
+  return [
+    `Total: ${formatMXN(booking.totalCents)}`,
+    `Anticipo pagado: ${formatMXN(booking.paidCents)}`,
+    `Saldo el día del servicio: ${formatMXN(booking.balanceCents)}`,
+  ];
 }
 
-// Text the customer sends to the business by WhatsApp after paying.
+// Text the customer sends to the business by WhatsApp after booking.
 export function paidBookingMessage(booking: PaidBooking): string {
   const lines = [
-    `Hola ${booking.businessName}, ya pagué mi reserva ${booking.folio}:`,
+    booking.paidCents > 0
+      ? `Hola ${booking.businessName}, ya pagué mi reserva ${booking.folio}:`
+      : `Hola ${booking.businessName}, aparté mi lugar con la reserva ${booking.folio}:`,
     "",
     `Fecha: ${formatLongDate(booking.serviceDate)}`,
     `Horario: ${slotLabel(booking.slot)}`,

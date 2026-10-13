@@ -126,7 +126,8 @@ export async function syncMercadoPagoPayment(
   return { bookingId, bookingStatus: result.booking_status };
 }
 
-async function emailBusiness(bookingId: string) {
+// Emails the business about a booking confirmed from the public page. Never throws.
+export async function emailBusiness(bookingId: string) {
   const admin = createAdminClient();
   if (!admin) return;
   try {

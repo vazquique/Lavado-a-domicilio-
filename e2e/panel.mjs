@@ -95,6 +95,17 @@ await page.waitForSelector("text=Logo actualizado.");
 step("logo uploaded");
 await shot("07-negocio-logo");
 
+// Give a partner access by email (the code never has anyone's email), then take it away.
+await page.fill("#access-email", "Socio@Example.com");
+await page.click("button:has-text('Dar acceso')");
+await page.waitForSelector("text=le llegará un código");
+await page.waitForSelector("li:has-text('socio@example.com')");
+step("access: " + (await page.locator("section", { hasText: "Acceso al panel" }).locator("ul").innerText()).replace(/\s+/g, " "));
+await shot("07b-acceso-panel");
+await page.locator("li", { hasText: "socio@example.com" }).locator("button:has-text('Quitar')").click();
+await page.waitForSelector("li:has-text('socio@example.com')", { state: "detached" });
+step("access removed");
+
 await page.goto(`${base}/panel/horarios`);
 await page.waitForSelector("text=Franjas y lugares");
 await page.fill("#blocked-date", "2026-12-25");
@@ -125,6 +136,7 @@ await shot("10-vehiculos");
 await page.goto(`${base}/jbsbros`);
 await page.click("button:has-text('Carro normal')");
 await page.click("button:has-text('Lavado normal')");
+await page.click("button:has-text('¿Le agregamos algo')");
 await page.waitForSelector("text=Detallado de rines y llantas");
 step("public page extra: " + (await page.locator("button", { hasText: "Detallado de rines" }).innerText()).replace(/\s+/g, " "));
 step("public exterior order: " + JSON.stringify(await page.locator("[role=tabpanel] button span.font-medium").allInnerTexts()));

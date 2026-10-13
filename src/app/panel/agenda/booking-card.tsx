@@ -63,7 +63,12 @@ export function BookingCard({
           {STATUS_LABELS[status]}
         </span>
         <span className="text-xs text-muted-foreground">
-          {booking.folio} · {booking.source === "online" ? "En línea" : "La agregaste tú"}
+          {booking.folio} ·{" "}
+          {booking.source === "manual"
+            ? "La agregaste tú"
+            : booking.paidOnlineCents > 0 || booking.status === "pending_payment"
+              ? "En línea"
+              : "En línea · efectivo"}
         </span>
       </div>
 

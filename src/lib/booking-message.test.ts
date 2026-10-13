@@ -41,6 +41,13 @@ describe("paidBookingMessage", () => {
     );
   });
 
+  test("a booking paid in cash on the day says so", () => {
+    const message = paidBookingMessage({ ...booking, paidCents: 0, balanceCents: 63000 });
+    expect(message).toContain("Hola JB's Bros, aparté mi lugar con la reserva JBS-1042:");
+    expect(message).toContain("Total: $630, en efectivo el día del servicio");
+    expect(message).not.toContain("Anticipo");
+  });
+
   test("says when everything was paid", () => {
     const message = paidBookingMessage({ ...booking, references: "", paidCents: 63000, balanceCents: 0 });
     expect(message).toContain("Total: $630 (pagado completo)");
@@ -56,6 +63,12 @@ describe("confirmedBookingEmail", () => {
     expect(email.text).toContain("Celular: 33 1234 5678");
     expect(email.text).toContain("Anticipo pagado: $315");
     expect(email.text).toContain("https://wa.me/523312345678");
+  });
+
+  test("tells the business when the customer pays in cash", () => {
+    const email = confirmedBookingEmail({ ...booking, paidCents: 0, balanceCents: 63000 });
+    expect(email.text).toContain("JB's Bros: nueva reserva, paga en efectivo el día del servicio.");
+    expect(email.text).toContain("Total: $630, en efectivo el día del servicio");
   });
 
   test("escapes what the customer typed", () => {
