@@ -18,7 +18,7 @@ import {
   type ServiceArea,
 } from "@/lib/car-parts";
 import { centsToPesosInput } from "@/lib/panel/parse";
-import { EXPLAINER_IDS, EXPLAINERS, getExplainer } from "@/lib/service-explainers";
+import { EXPLAINER_IDS, EXPLAINERS, isExplainerId } from "@/lib/service-explainers";
 import { deleteService, saveService } from "./actions";
 
 export type ServiceValues = {
@@ -204,7 +204,7 @@ function CarPartsField({ defaultParts, color }: { defaultParts: CarPart[]; color
 // Which plain-language explanation customers see under "¿Qué es esto?", with a preview.
 function ExplainerField({ id, defaultValue, color }: { id: string; defaultValue: string; color: string }) {
   const [value, setValue] = useState(defaultValue);
-  const explainer = getExplainer(value);
+  const explainerId = isExplainerId(value) ? value : null;
   return (
     <Field label="Explicación para el cliente" htmlFor={id} hint="Lo que ve el cliente al tocar “¿Qué es esto?”.">
       <select
@@ -221,11 +221,11 @@ function ExplainerField({ id, defaultValue, color }: { id: string; defaultValue:
           </option>
         ))}
       </select>
-      {explainer && (
+      {explainerId && (
         <details className="rounded-lg border bg-muted/40 p-3">
           <summary className="cursor-pointer text-sm font-medium">Ver cómo la ve el cliente</summary>
           <div className="mt-3">
-            <ServiceExplainer explainer={explainer} icon="complete" color={color} />
+            <ServiceExplainer explainerId={explainerId} color={color} />
           </div>
         </details>
       )}

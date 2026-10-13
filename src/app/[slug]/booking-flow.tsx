@@ -37,7 +37,7 @@ import { formatClockTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import type { BookingRequest } from "@/lib/booking-request";
 import type { PaymentOption } from "@/lib/payment-options";
-import { getExplainer } from "@/lib/service-explainers";
+import { isExplainerId } from "@/lib/service-explainers";
 import { vehicleShape } from "@/lib/vehicle-shape";
 import { prepareQuote, startCheckout, type QuoteSummary } from "./actions";
 
@@ -638,7 +638,7 @@ function ServiceCard({
   color: string;
 }) {
   const [open, setOpen] = useState(false);
-  const explainer = getExplainer(service.explainer);
+  const explainerId = isExplainerId(service.explainer) ? service.explainer : null;
   const icon = serviceIcon(service);
   const labels = partsLabels(service.carParts);
   return (
@@ -697,7 +697,7 @@ function ServiceCard({
           </span>
         )}
       </button>
-      {explainer && (
+      {explainerId && (
         <>
           <button
             type="button"
@@ -711,7 +711,7 @@ function ServiceCard({
           </button>
           {open && (
             <div className="border-t bg-muted/40 p-4">
-              <ServiceExplainer explainer={explainer} icon={icon} color={color} />
+              <ServiceExplainer explainerId={explainerId} color={color} />
             </div>
           )}
         </>

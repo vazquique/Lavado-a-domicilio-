@@ -18,7 +18,8 @@ await page.waitForSelector("text=Tu vehículo");
 await shot("01-inicio", false);
 
 await page.click("button:has-text('Carro normal')");
-step("services for car: " + (await page.locator("section", { hasText: "Servicio" }).first().innerText()).replace(/\s+/g, " "));
+const serviceStep = page.locator("section", { has: page.locator("h2", { hasText: /Servicio$/ }) });
+step("services for car: " + (await serviceStep.innerText()).replace(/\s+/g, " "));
 await page.click("button:has-text('Lavado normal')");
 step("bar after base: " + (await bar()));
 await page.click("button[role=checkbox]:has-text('Restauración de faros')");
@@ -28,6 +29,13 @@ step("car drawing: " + (await page.locator("svg[role=img].car-diagram").first().
 const faros = page.locator("div.rounded-2xl", { hasText: "Restauración de faros" }).first();
 await faros.locator("button[aria-expanded]").click();
 step("explainer: " + (await faros.locator("p.leading-relaxed").innerText()).slice(0, 60) + "… steps: " + (await faros.locator("ol li").count()));
+// Its own before/after picture: the tool on the handle wipes from one to the other.
+const slider = faros.locator("[role=slider]");
+await slider.focus();
+await page.keyboard.press("Home");
+step("before/after: " + (await slider.getAttribute("aria-valuetext")));
+await page.keyboard.press("ArrowRight");
+step("before/after →: " + (await slider.getAttribute("aria-valuetext")));
 await faros.locator("button[aria-expanded]").click();
 step("tabs: " + JSON.stringify(await page.locator("[role=tab]").allInnerTexts()));
 await page.click("[role=tab]:has-text('Interior')");
@@ -58,7 +66,8 @@ await page.fill("input[name=address]", "Av. Siempre Viva 742");
 await page.fill("input[name=references]", "Portón negro");
 await page.click("text=Ver resumen");
 await page.waitForSelector("text=Tu cotización");
-step("summary: " + (await page.locator("section").first().innerText()).replace(/\s+/g, " "));
+const summary = page.locator("h2", { hasText: "Tu cotización" }).locator("xpath=following-sibling::section[1]");
+step("summary: " + (await summary.innerText()).replace(/\s+/g, " "));
 // With Mercado Pago set up, the summary asks for payment and keeps WhatsApp for questions.
 const wa = await page.locator("a[href^='https://wa.me']").first().getAttribute("href");
 step("whatsapp link: " + wa.slice(0, 40) + "…");

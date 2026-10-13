@@ -96,6 +96,10 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
 - Explicaciones para el cliente ("¿Qué es esto?"): `services.explainer` elige una de `src/lib/service-explainers.ts`
   (texto simple, pasos con íconos, antes y después) que dibuja `src/components/service-explainer.tsx`. Para agregar
   una, súmala a esa lista con su prueba; no prometer duraciones.
+- Antes y después: cada explicación tiene su propia escena en `src/components/explainer-scenes.tsx` (la misma escena
+  sucia y limpia, más la herramienta de la manija); TypeScript exige una por explicación. `before-after.tsx` las
+  encima con un deslizador (dedo, mouse y teclado). Lo "al azar" (polvo, migajas, grietas) sale de una semilla fija
+  para que servidor y navegador dibujen igual. Animaciones `ba-*` en `globals.css`, apagadas con reduced-motion.
 
 ## Pagos (Mercado Pago)
 - Checkout Pro por REST en `src/lib/mercadopago.ts` (nombres de campos del SDK oficial `mercadopago` 3.x).

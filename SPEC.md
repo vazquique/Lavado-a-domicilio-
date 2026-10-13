@@ -227,3 +227,15 @@ Respuestas del dueño y cambios de alcance aprobados, en orden.
 - Más decoración: encabezado con el color del negocio, burbujas y un auto; sección "¿Cómo funciona?" en 4 pasos;
   íconos en cada paso; siluetas de carro y camioneta al elegir el vehículo.
 - En el panel, cada servicio tiene "Explicación para el cliente" con vista previa.
+
+### 2026-10-13 — Antes y después propio de cada servicio (pedido del dueño)
+- Lavado normal es solo lavado, aspirado y limpieza rápida, sin plásticos ni tablero (lo dijo el dueño; corrige la
+  decisión anterior). En el dibujo del auto se iluminan carrocería, vidrios, rines y pisos.
+- Cada servicio tiene su propio dibujo de antes y después, no una plantilla: auto con "LÁVAME" en el polvo → limpio;
+  camioneta en una cochera → en exhibición con moño; frente con mosquitos y faros amarillos → blanco y con luces;
+  interior con basura, mosca y mal olor → limpio con pinito; pintura vista con lupa (fierro, chapopote, savia) → lisa;
+  agua que se extiende → gotas redondas; capa cerámica que rebota sol y lluvia; parabrisas borroso → nítido; rin con
+  polvo de frenos → pulido; faro amarillo de noche → claro y alumbrando; parrilla gris → negra; asiento con manchas y
+  lodo → limpio y aspirado; tablero con polvo y un dedazo → como nuevo; cuero agrietado → suave.
+- El cliente desliza la herramienta del servicio (espuma, cepillo, spray, barra de arcilla…) para pasar de antes a
+  después. Al abrir la explicación la herramienta se mueve sola una vez para enseñar que se puede deslizar.

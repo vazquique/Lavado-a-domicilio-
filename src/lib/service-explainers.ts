@@ -37,15 +37,14 @@ export type Explainer = {
 export const EXPLAINERS = {
   "lavado-completo": {
     name: "Lavado con aspirado",
-    summary:
-      "Tu auto limpio por fuera y por dentro: lo lavamos a mano, lo aspiramos y le damos una limpieza rápida al tablero y a los paneles de las puertas.",
+    summary: "Lo básico para traer tu auto limpio: lo lavamos a mano, lo aspiramos y le damos una limpieza rápida.",
     steps: [
       { icon: "foam", text: "Espuma para aflojar el polvo y el lodo" },
       { icon: "hand", text: "Lavado a mano con guante de microfibra, que no raya" },
-      { icon: "vacuum", text: "Aspirado de asientos y alfombras" },
-      { icon: "dash", text: "Limpieza rápida de tablero y paneles" },
+      { icon: "vacuum", text: "Aspirado por dentro" },
+      { icon: "sparkles", text: "Limpieza rápida y listo" },
     ],
-    result: "Brillante por fuera y sin polvo por dentro.",
+    result: "Limpio por fuera y sin polvo por dentro.",
     before: "Con polvo y lodo",
     after: "Limpio y brillante",
   },
@@ -240,6 +239,10 @@ export const EXPLAINERS = {
 export type ExplainerId = keyof typeof EXPLAINERS;
 export const EXPLAINER_IDS = Object.keys(EXPLAINERS) as ExplainerId[];
 
+export function isExplainerId(id: string | null | undefined): id is ExplainerId {
+  return !!id && Object.hasOwn(EXPLAINERS, id);
+}
+
 export function getExplainer(id: string | null | undefined): Explainer | null {
-  return id && Object.hasOwn(EXPLAINERS, id) ? EXPLAINERS[id as ExplainerId] : null;
+  return isExplainerId(id) ? EXPLAINERS[id] : null;
 }

@@ -109,3 +109,179 @@
     opacity: 0.4;
   }
 }
+
+/* Before/after pictures of each service (src/components/explainer-scenes.tsx). */
+@keyframes ba-float {
+  0% {
+    transform: translateY(8px) scale(0.7);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(-50px) scale(1.1);
+    opacity: 0;
+  }
+}
+.ba-float {
+  animation: ba-float 4.5s ease-in infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes ba-shine {
+  0% {
+    transform: translateX(-120px);
+  }
+  55%,
+  100% {
+    transform: translateX(260px);
+  }
+}
+.ba-shine {
+  animation: ba-shine 3.6s ease-in-out infinite;
+}
+@keyframes ba-swing {
+  0%,
+  100% {
+    transform: rotate(-10deg);
+  }
+  50% {
+    transform: rotate(10deg);
+  }
+}
+.ba-swing {
+  animation: ba-swing 2.6s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: top center;
+}
+@keyframes ba-sway {
+  0%,
+  100% {
+    transform: rotate(-6deg);
+  }
+  50% {
+    transform: rotate(6deg);
+  }
+}
+.ba-sway {
+  animation: ba-sway 6s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: top center;
+}
+@keyframes ba-roll {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(10px, 44px);
+    opacity: 0;
+  }
+}
+.ba-roll {
+  animation: ba-roll 2.8s ease-in infinite;
+}
+@keyframes ba-wind {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(40px, -34px);
+    opacity: 0;
+  }
+}
+.ba-wind {
+  animation: ba-wind 2.4s ease-in infinite;
+}
+@keyframes ba-rain {
+  from {
+    transform: translate(0, -24px);
+  }
+  to {
+    transform: translate(-6px, 24px);
+  }
+}
+.ba-rain {
+  animation: ba-rain 0.8s linear infinite;
+}
+@keyframes ba-buzz {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(16px, -10px);
+  }
+  50% {
+    transform: translate(6px, 10px);
+  }
+  75% {
+    transform: translate(-12px, -4px);
+  }
+}
+.ba-buzz {
+  animation: ba-buzz 1.4s ease-in-out infinite;
+}
+@keyframes ba-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.ba-pulse {
+  animation: ba-pulse 2.2s ease-in-out infinite;
+}
+@keyframes ba-wave {
+  0%,
+  100% {
+    transform: translateX(-2px);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateX(2px);
+    opacity: 0.9;
+  }
+}
+.ba-wave {
+  animation: ba-wave 1.6s ease-in-out infinite;
+}
+@keyframes ba-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate(-8px, 10px) rotate(-10deg);
+  }
+}
+.ba-drift {
+  animation: ba-drift 5s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ba-float,
+  .ba-shine,
+  .ba-swing,
+  .ba-sway,
+  .ba-roll,
+  .ba-wind,
+  .ba-rain,
+  .ba-buzz,
+  .ba-pulse,
+  .ba-wave,
+  .ba-drift {
+    animation: none;
+  }
+}
