@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { paidBookingMessage, paymentLines, slotLabel } from "@/lib/booking-message";
+import { paidBookingMessage, paymentLines } from "@/lib/booking-message";
 import { readableTextColor } from "@/lib/colors";
 import { formatLongDate, TIMEZONE } from "@/lib/dates";
 import { formatMXN } from "@/lib/money";
 import { getOnlineBooking, isUuid, syncMercadoPagoPayment, type OnlineBooking } from "@/lib/online-bookings";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { arrivalLabel } from "@/lib/time";
 import { whatsAppLink } from "@/lib/whatsapp";
 import { BusinessHeader } from "../../business-header";
 
@@ -165,7 +166,7 @@ function Details({ booking, paidLines }: { booking: OnlineBooking; paidLines: st
   return (
     <section className="space-y-1 rounded-xl border bg-card p-4 text-sm shadow-sm">
       <p className="font-medium first-letter:uppercase">{formatLongDate(paid.serviceDate)}</p>
-      <p>{slotLabel(paid.slot)}</p>
+      <p>{arrivalLabel(paid.slot)}</p>
       <p className="pt-2">
         {paid.address}
         {paid.zoneName && `, ${paid.zoneName}`}

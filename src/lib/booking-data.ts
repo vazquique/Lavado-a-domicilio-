@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ScheduleRules, SlotRule, SlotUsage } from "./availability";
+import type { PlaceUsage, ScheduleRules, SlotRule } from "./availability";
 import { isCarPart, type CarPart, type ServiceArea } from "./car-parts";
 import { addDays, todayInMexico } from "./dates";
 import { logoUrl } from "./logos";
@@ -30,7 +30,8 @@ export type BookingData = {
   catalog: Omit<QuoteCatalog, "services"> & { services: BookingService[] };
   rules: ScheduleRules;
   slots: SlotRule[];
-  usage: SlotUsage[];
+  // Taken places (times and sizes only, never who booked them).
+  usage: PlaceUsage[];
 };
 
 const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -76,7 +77,7 @@ export async function getBookingData(supabase: SupabaseClient, slug: string, now
       .order("sort_order")
       .order("start_time"),
     supabase.from("blocked_dates").select("date").eq("business_id", business.id).gte("date", today).lte("date", lastDay),
-    supabase.rpc("slot_usage", { p_business_id: business.id, p_from: today, p_to: lastDay }),
+    supabase.rpc("slot_places", { p_business_id: business.id, p_from: today, p_to: lastDay }),
   ]);
   for (const result of [vehicleTypes, services, prices, zones, slots, blocked, usage]) {
     if (result.error) throw result.error;
@@ -127,11 +128,14 @@ export async function getBookingData(supabase: SupabaseClient, slug: string, now
       endTime: row.end_time,
       capacity: row.capacity,
     })),
-    usage: (usage.data ?? []).map((row: { service_date: string; time_slot_id: string; used_units: number }) => ({
-      date: row.service_date,
-      timeSlotId: row.time_slot_id,
-      usedUnits: row.used_units,
-    })),
+    usage: (usage.data ?? []).map(
+      (row: { service_date: string; time_slot_id: string; start_place: number | null; units: number }) => ({
+        date: row.service_date,
+        timeSlotId: row.time_slot_id,
+        startPlace: row.start_place,
+        units: row.units,
+      }),
+    ),
   };
 }
 

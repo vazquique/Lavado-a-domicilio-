@@ -108,6 +108,7 @@ step("access removed");
 
 await page.goto(`${base}/panel/horarios`);
 await page.waitForSelector("text=Franjas y lugares");
+step("times preview: " + JSON.stringify(await page.locator("p:has-text('Horas que eligen tus clientes')").allInnerTexts()));
 await page.fill("#blocked-date", "2026-12-25");
 await page.fill("#blocked-reason", "Navidad");
 await page.click("text=Bloquear día");

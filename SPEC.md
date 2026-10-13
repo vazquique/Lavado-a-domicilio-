@@ -266,3 +266,17 @@ Respuestas del dueño y cambios de alcance aprobados, en orden.
   código porque el repositorio es público; el dueño lo agrega desde el panel.
 - Orden acordado para lo que sigue: clientes de planta, cuenta del cliente frecuente y suscripciones.
 
+
+### 2026-10-13 — Hora exacta (pedido del dueño)
+- "Mañana" y "Tarde" eran muy amplios. Ahora cada franja se parte en horas exactas, una por lugar, repartidas
+  parejo y redondeadas a 5 minutos: Mañana de 9:00 a 13:00 con 3 lugares = 9:00, 10:20 y 11:40; Tarde de 13:00 a
+  18:00 = 13:00, 14:40 y 16:20. Si el dueño cambia los lugares o las horas de una franja, cambian sus horas.
+- El cliente elige el día y luego una hora libre (las ocupadas se ven tachadas). Es la hora en que llegamos; no se
+  promete cuánto dura el servicio.
+- Un servicio que ocupa varios lugares toma esas horas seguidas (Full detailing con 3 lugares: toda la mañana desde
+  las 9:00).
+- La anticipación mínima cuenta por hora: si son las 9:00 y piden 2 horas, todavía se puede reservar a las 11:40.
+- La agenda del panel muestra el día por hora: cada reserva con su hora y las horas libres con "Agregar" (abre el
+  formulario con esa hora ya elegida). Agregar y reagendar también piden la hora exacta.
+- La hora queda guardada en la reserva tal como se apartó; mensajes, correo y recordatorio dicen "10:20 (Mañana)".
+- Las reservas que ya existían recibieron su hora en el orden en que se hicieron.

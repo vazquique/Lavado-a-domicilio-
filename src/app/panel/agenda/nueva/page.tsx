@@ -15,15 +15,25 @@ export default function NewBookingPage({ searchParams }: PageProps<"/panel/agend
         back={{ href: "/panel/agenda", label: "Agenda" }}
       />
       <Suspense fallback={<PanelLoading />}>
-        {searchParams.then((params) => (
-          <NewBooking day={Array.isArray(params.dia) ? params.dia[0] : params.dia} />
-        ))}
+        {searchParams.then((params) => {
+          const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
+          return <NewBooking day={first(params.dia)} slotId={first(params.horario)} place={first(params.lugar)} />;
+        })}
       </Suspense>
     </div>
   );
 }
 
-async function NewBooking({ day }: { day: string | undefined }) {
+// `horario` and `lugar` come from tapping a free time in the agenda.
+async function NewBooking({
+  day,
+  slotId,
+  place,
+}: {
+  day: string | undefined;
+  slotId: string | undefined;
+  place: string | undefined;
+}) {
   const { supabase, business } = await getPanelSession();
   if (!business) return <NoBusiness />;
 
@@ -33,10 +43,15 @@ async function NewBooking({ day }: { day: string | undefined }) {
 
   const today = todayInMexico(now);
   const date = day && /^\d{4}-\d{2}-\d{2}$/.test(day) && day >= today ? day : today;
+  const slot = data.slots.find((item) => item.id === slotId);
+  const initialTime =
+    slot && place && /^\d{1,2}$/.test(place) && Number(place) < slot.capacity
+      ? { slotId: slot.id, place: Number(place) }
+      : null;
   const brand = data.business.brandColor;
   return (
     <div style={{ "--brand": brand, "--brand-text": readableTextColor(brand) } as CSSProperties}>
-      <NewBookingForm catalog={data.catalog} initialDate={date} today={today} />
+      <NewBookingForm catalog={data.catalog} initialDate={date} initialTime={initialTime} today={today} />
     </div>
   );
 }

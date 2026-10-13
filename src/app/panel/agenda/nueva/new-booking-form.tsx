@@ -10,7 +10,7 @@ import { formatMXN } from "@/lib/money";
 import { calculateQuote, servicesForVehicle } from "@/lib/quote";
 import { cn } from "@/lib/utils";
 import { createManualBooking, getDaySlots, type DaySlots } from "../actions";
-import { SlotPicker } from "../slot-picker";
+import { freeChoice, TimePicker, type ChosenTime } from "../slot-picker";
 
 const optionClassName =
   "flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg border bg-card px-3 text-sm has-[:checked]:border-[var(--brand)] has-[:checked]:ring-2 has-[:checked]:ring-[var(--brand)]/30";
@@ -20,10 +20,13 @@ const optionClassName =
 export function NewBookingForm({
   catalog,
   initialDate,
+  initialTime,
   today,
 }: {
   catalog: BookingData["catalog"];
   initialDate: string;
+  // A free time tapped in the agenda ("Agregar" next to it).
+  initialTime: ChosenTime | null;
   today: string;
 }) {
   const { state, pending, formRef, onSubmit } = useFormAction(createManualBooking);
@@ -33,7 +36,7 @@ export function NewBookingForm({
   const [zoneId, setZoneId] = useState("");
   const [date, setDate] = useState(initialDate);
   const [day, setDay] = useState<DaySlots | null>(null);
-  const [slotId, setSlotId] = useState<string | null>(null);
+  const [time, setTime] = useState<ChosenTime | null>(initialTime);
 
   useEffect(() => {
     let current = true;
@@ -58,7 +61,9 @@ export function NewBookingForm({
       })
     : null;
   const quote = result?.ok ? result.quote : null;
-  const slots = day?.ok && day.date === date ? day.slots : null;
+  const unitsNeeded = quote?.capacityUnits ?? 1;
+  const loaded = day?.ok && day.date === date ? day : null;
+  const chosen = loaded ? freeChoice(time, loaded, unitsNeeded) : null;
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className="space-y-6">
@@ -177,7 +182,7 @@ export function NewBookingForm({
       </fieldset>
 
       <fieldset className="space-y-3">
-        <legend className="text-lg font-semibold">Día y horario</legend>
+        <legend className="text-lg font-semibold">Día y hora</legend>
         <Input
           type="date"
           name="date"
@@ -187,26 +192,29 @@ export function NewBookingForm({
           aria-label="Día"
           onChange={(event) => {
             setDate(event.target.value);
-            setSlotId(null);
+            setTime(null);
           }}
         />
         {day?.ok === false && <p className="text-sm text-destructive">{day.message}</p>}
-        {day?.ok && day.date === date && day.blockedReason !== null && (
-          <p className="text-sm text-amber-800">Ese día está bloqueado ({day.blockedReason}). Puedes agendar igual.</p>
+        {loaded && loaded.blockedReason !== null && (
+          <p className="text-sm text-amber-800">Ese día está bloqueado ({loaded.blockedReason}). Puedes agendar igual.</p>
         )}
-        {day?.ok && day.date === date && day.blockedReason === null && !day.working && (
+        {loaded && loaded.blockedReason === null && !loaded.working && (
           <p className="text-sm text-amber-800">Ese día no trabajas. Puedes agendar igual.</p>
         )}
-        {slots ? (
-          <SlotPicker
-            name="timeSlotId"
-            slots={slots}
-            unitsNeeded={quote?.capacityUnits ?? 1}
-            value={slotId}
-            onChange={setSlotId}
+        <input type="hidden" name="timeSlotId" value={chosen?.slotId ?? ""} />
+        <input type="hidden" name="startPlace" value={chosen?.place ?? ""} />
+        {loaded ? (
+          <TimePicker
+            date={date}
+            slots={loaded.slots}
+            usage={loaded.usage}
+            unitsNeeded={unitsNeeded}
+            value={chosen}
+            onChange={setTime}
           />
         ) : (
-          <p className="text-sm text-muted-foreground">Viendo qué horarios hay…</p>
+          <p className="text-sm text-muted-foreground">Viendo qué horas hay…</p>
         )}
       </fieldset>
 

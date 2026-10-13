@@ -32,7 +32,7 @@ export async function getOnlineBooking(admin: SupabaseClient, bookingId: string)
   const { data: row, error } = await admin
     .from("bookings")
     .select(
-      "id, business_id, folio, status, service_date, time_slot_id, time_slot_name, hold_expires_at, checkout_url, customer_name, customer_phone, customer_email, address, address_references, zone_name, vehicle_type_name, items, total_cents, deposit_cents, balance_cents",
+      "id, business_id, folio, status, service_date, time_slot_id, time_slot_name, arrival_time, hold_expires_at, checkout_url, customer_name, customer_phone, customer_email, address, address_references, zone_name, vehicle_type_name, items, total_cents, deposit_cents, balance_cents",
     )
     .eq("id", bookingId)
     .maybeSingle();
@@ -72,7 +72,12 @@ export async function getOnlineBooking(admin: SupabaseClient, bookingId: string)
       businessName: business.data.name,
       folio: row.folio,
       serviceDate: row.service_date,
-      slot: { name: row.time_slot_name, startTime: slot.data?.start_time ?? null, endTime: slot.data?.end_time ?? null },
+      slot: {
+        name: row.time_slot_name,
+        startTime: slot.data?.start_time ?? null,
+        endTime: slot.data?.end_time ?? null,
+        arrivalTime: row.arrival_time,
+      },
       address: row.address,
       references: row.address_references,
       zoneName: row.zone_name,
@@ -140,7 +145,10 @@ export async function emailBusiness(bookingId: string) {
     if (error) throw error;
     const users = await Promise.all((members ?? []).map((member) => admin.auth.admin.getUserById(member.user_id)));
     const emails = users.flatMap((result) => (result.data.user?.email ? [result.data.user.email] : []));
-    await sendEmail(emails, confirmedBookingEmail(booking.paid));
+    // One email per person: while we use Resend's test sender, an address it can't write to
+    // (anyone but the Resend account's owner) would otherwise stop everyone's email.
+    const email = confirmedBookingEmail(booking.paid);
+    await Promise.all(emails.map((to) => sendEmail([to], email)));
   } catch (error) {
     console.error("Could not email the business about booking", bookingId, error);
   }

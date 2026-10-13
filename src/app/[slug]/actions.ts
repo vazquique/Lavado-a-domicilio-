@@ -4,7 +4,7 @@ import { createHmac } from "node:crypto";
 import { headers } from "next/headers";
 import { after } from "next/server";
 import { z } from "zod";
-import { isSlotBookable, type SlotRule } from "@/lib/availability";
+import { isSlotBookable, placeTime, type SlotRule } from "@/lib/availability";
 import { getBookingData, depositLabel, type BookingData } from "@/lib/booking-data";
 import { bookingRequestSchema, type BookingRequest } from "@/lib/booking-request";
 import { formatLongDate, todayInMexico } from "@/lib/dates";
@@ -18,12 +18,13 @@ import { calculateQuote, type Quote } from "@/lib/quote";
 import { quoteRequestMessage } from "@/lib/quote-message";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createPublicClient } from "@/lib/supabase/public";
+import type { BookingTime } from "@/lib/time";
 import { whatsAppLink } from "@/lib/whatsapp";
 
 export type QuoteSummary = {
   quote: Quote;
   dateLabel: string;
-  slot: { name: string; startTime: string; endTime: string };
+  slot: BookingTime;
   depositLabel: string;
   customer: { name: string; phone: string; address: string; references: string; email: string | null };
   whatsappUrl: string | null;
@@ -43,7 +44,7 @@ const QUOTE_ERRORS = {
   zone: "Esa colonia ya no está en la lista. Elige otra o pregúntanos por WhatsApp.",
 } as const;
 
-const SLOT_GONE = "Ese horario ya no está disponible. Elige otro, por favor.";
+const SLOT_GONE = "Esa hora ya no está disponible. Elige otra, por favor.";
 
 type CheckedRequest =
   | {
@@ -52,6 +53,8 @@ type CheckedRequest =
       data: BookingData;
       quote: Quote;
       slot: SlotRule;
+      // When we arrive, "10:20" (the chosen place of the slot).
+      arrivalTime: string;
     }
   | { ok: false; message: string };
 
@@ -82,6 +85,7 @@ async function checkRequest(request: BookingRequest, now: Date): Promise<Checked
     isSlotBookable({
       date: input.date,
       slotId: input.timeSlotId,
+      startPlace: input.startPlace,
       slots: data.slots,
       usage: data.usage,
       rules: data.rules,
@@ -90,19 +94,19 @@ async function checkRequest(request: BookingRequest, now: Date): Promise<Checked
     });
   if (!slot || !available) return { ok: false, message: SLOT_GONE };
 
-  return { ok: true, input, data, quote: result.quote, slot };
+  return { ok: true, input, data, quote: result.quote, slot, arrivalTime: placeTime(slot, input.startPlace) };
 }
 
 // Builds the official summary on the server.
 export async function prepareQuote(request: BookingRequest): Promise<PrepareQuoteResult> {
   const checked = await checkRequest(request, new Date());
   if (!checked.ok) return checked;
-  const { input, data, quote, slot } = checked;
+  const { input, data, quote, slot, arrivalTime } = checked;
 
   const summary: Omit<QuoteSummary, "whatsappUrl"> = {
     quote,
     dateLabel: formatLongDate(input.date),
-    slot: { name: slot.name, startTime: slot.startTime, endTime: slot.endTime },
+    slot: { name: slot.name, startTime: slot.startTime, endTime: slot.endTime, arrivalTime },
     depositLabel: depositLabel(data.catalog.deposit, formatMXN),
     customer: input.customer,
     bookOnline: createAdminClient() !== null && getSupabaseSecretKey() !== null,
@@ -196,6 +200,7 @@ export async function startCheckout(request: BookingRequest, choice: CheckoutCho
       business_id: data.business.id,
       service_date: input.date,
       time_slot_id: slot.id,
+      start_place: input.startPlace,
       vehicle_type_id: quote.vehicle.id,
       zone_id: quote.zone?.id ?? null,
       capacity_units: quote.capacityUnits,
@@ -291,6 +296,7 @@ export async function bookWithCash(request: BookingRequest, choice: { acceptTerm
       business_id: data.business.id,
       service_date: input.date,
       time_slot_id: slot.id,
+      start_place: input.startPlace,
       vehicle_type_id: quote.vehicle.id,
       zone_id: quote.zone?.id ?? null,
       capacity_units: quote.capacityUnits,

@@ -1,6 +1,6 @@
-import { slotLabel, type PaidBooking } from "./booking-message";
 import { formatLongDate } from "./dates";
 import { formatMXN } from "./money";
+import { slotLabel, type BookingTime } from "./time";
 
 // A booking as the agenda's WhatsApp reminder tells it to the customer.
 export type ReminderBooking = {
@@ -8,7 +8,7 @@ export type ReminderBooking = {
   customerName: string;
   folio: string;
   serviceDate: string; // ISO date
-  slot: PaidBooking["slot"];
+  slot: BookingTime;
   address: string;
   zoneName: string | null;
   vehicleName: string;

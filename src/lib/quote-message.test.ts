@@ -29,7 +29,7 @@ const request = {
   businessName: "JB's Bros",
   quote: result.quote,
   date: "2026-10-13",
-  slot: { name: "Mañana", startTime: "09:00:00", endTime: "13:00:00" },
+  slot: { name: "Mañana", startTime: "09:00:00", endTime: "13:00:00", arrivalTime: "10:20" },
   customer: {
     name: "Ana López",
     phone: "3312345678",
@@ -55,7 +55,7 @@ describe("quoteRequestMessage", () => {
         "Extras: Cera",
         "Colonia: Capital Norte",
         "Fecha: martes, 13 de octubre de 2026",
-        "Horario: Mañana (9:00 a 13:00)",
+        "Horario: 10:20 (Mañana)",
         "Dirección: Av. Siempre Viva 742, Capital Norte",
         "Referencias: Portón negro",
         "",

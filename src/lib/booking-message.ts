@@ -1,14 +1,14 @@
 import { formatLongDate } from "./dates";
 import { formatMXN } from "./money";
 import { formatMxPhone } from "./quote-message";
-import { formatClockTime } from "./time";
+import { slotLabel, type BookingTime } from "./time";
 
 // A paid online booking, as the success page, the WhatsApp message and the email show it.
 export type PaidBooking = {
   businessName: string;
   folio: string;
   serviceDate: string; // ISO date, e.g. "2026-10-20"
-  slot: { name: string; startTime: string | null; endTime: string | null };
+  slot: BookingTime;
   address: string;
   references: string;
   zoneName: string | null;
@@ -19,13 +19,6 @@ export type PaidBooking = {
   paidCents: number;
   balanceCents: number;
 };
-
-// "Mañana (9:00 a 13:00)", or just the name when the slot's hours are unknown.
-export function slotLabel(slot: PaidBooking["slot"]): string {
-  return slot.startTime && slot.endTime
-    ? `${slot.name} (${formatClockTime(slot.startTime)} a ${formatClockTime(slot.endTime)})`
-    : slot.name;
-}
 
 // Lines about the money, shared by the page, the message and the email. Nothing paid
 // online means the customer chose to pay cash on the day.

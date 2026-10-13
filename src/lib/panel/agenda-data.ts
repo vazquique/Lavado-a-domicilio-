@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isBookingStatus, monthGrid, type BookingStatus } from "@/lib/agenda";
+import { placeTime } from "@/lib/availability";
 import { formatMxPhone } from "@/lib/quote-message";
 import { reminderMessage } from "@/lib/reminder-message";
 import { whatsAppLink } from "@/lib/whatsapp";
@@ -23,6 +24,12 @@ export type AgendaBooking = {
   serviceDate: string;
   timeSlotId: string;
   timeSlotName: string;
+  // First place it takes in its slot and when we arrive ("10:20"); null for bookings from
+  // before exact times.
+  startPlace: number | null;
+  arrivalTime: string | null;
+  // When its last place ends (the next place's time), shown for bookings of several places.
+  untilTime: string | null;
   capacityUnits: number;
   holdExpiresAt: string | null;
   customer: { name: string; phone: string; phoneLabel: string; email: string | null };
@@ -56,6 +63,8 @@ type BookingRow = {
   service_date: string;
   time_slot_id: string;
   time_slot_name: string;
+  start_place: number | null;
+  arrival_time: string | null;
   capacity_units: number;
   hold_expires_at: string | null;
   customer_name: string;
@@ -96,7 +105,7 @@ export async function getAgendaMonth(
     supabase
       .from("bookings")
       .select(
-        "id, folio, status, source, service_date, time_slot_id, time_slot_name, capacity_units, hold_expires_at, customer_name, customer_phone, customer_email, address, address_references, zone_name, vehicle_type_name, items, total_cents, deposit_cents, deposit_paid_at, balance_cents, balance_paid_at, notes",
+        "id, folio, status, source, service_date, time_slot_id, time_slot_name, start_place, arrival_time, capacity_units, hold_expires_at, customer_name, customer_phone, customer_email, address, address_references, zone_name, vehicle_type_name, items, total_cents, deposit_cents, deposit_paid_at, balance_cents, balance_paid_at, notes",
       )
       .eq("business_id", business.id)
       .gte("service_date", from)
@@ -138,6 +147,12 @@ export async function getAgendaMonth(
         serviceDate: row.service_date,
         timeSlotId: row.time_slot_id,
         timeSlotName: row.time_slot_name,
+        startPlace: row.start_place,
+        arrivalTime: row.arrival_time,
+        untilTime:
+          slot && row.start_place !== null && row.capacity_units > 1
+            ? placeTime(slot, row.start_place + row.capacity_units)
+            : null,
         capacityUnits: row.capacity_units,
         holdExpiresAt: row.hold_expires_at,
         customer: {
@@ -163,7 +178,12 @@ export async function getAgendaMonth(
             customerName: row.customer_name,
             folio: row.folio,
             serviceDate: row.service_date,
-            slot: { name: row.time_slot_name, startTime: slot?.startTime ?? null, endTime: slot?.endTime ?? null },
+            slot: {
+              name: row.time_slot_name,
+              startTime: slot?.startTime ?? null,
+              endTime: slot?.endTime ?? null,
+              arrivalTime: row.arrival_time,
+            },
             address: row.address,
             zoneName: row.zone_name,
             vehicleName: row.vehicle_type_name,

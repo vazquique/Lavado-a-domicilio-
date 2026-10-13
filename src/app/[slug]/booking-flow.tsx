@@ -20,7 +20,7 @@ import { useState, useTransition, type CSSProperties, type ReactNode } from "rea
 import { VehicleSilhouette } from "@/components/car-illustrations";
 import { CarSummary, ServiceIconBadge } from "@/components/car-summary";
 import { ServiceExplainer } from "@/components/service-explainer";
-import { bookableDates, daysWithTimeLeft, slotsForDate, type SlotAvailability } from "@/lib/availability";
+import { bookableDates, daysWithTimeLeft, earliestStart, slotsForDate, type SlotAvailability } from "@/lib/availability";
 import type { BookingData, BookingService } from "@/lib/booking-data";
 import {
   AREA_LABELS,
@@ -36,7 +36,7 @@ import { dayLabel } from "@/lib/dates";
 import { formatMXN } from "@/lib/money";
 import { calculateQuote, servicesForVehicle } from "@/lib/quote";
 import { formatMxPhone } from "@/lib/quote-message";
-import { formatClockTime } from "@/lib/time";
+import { arrivalLabel, formatClockTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import type { BookingRequest } from "@/lib/booking-request";
 import type { PaymentOption } from "@/lib/payment-options";
@@ -48,11 +48,10 @@ type Customer = { name: string; phone: string; address: string; references: stri
 
 const EMPTY_CUSTOMER: Customer = { name: "", phone: "", address: "", references: "", email: "" };
 
-const SLOT_STATUS_TEXT: Record<SlotAvailability["status"], string> = {
-  available: "",
+const SLOT_STATUS_TEXT: Record<Exclude<SlotAvailability["status"], "available">, string> = {
   too_soon: "Ya no da tiempo",
   full: "Lleno",
-  too_big: "No cabe en este horario",
+  too_big: "Tu servicio no cabe en este horario",
 };
 
 export function BookingFlow({
@@ -82,7 +81,8 @@ export function BookingFlow({
   // flooded with options, and who opens them is interested.
   const [showExtras, setShowExtras] = useState(false);
   const [date, setDate] = useState<string | null>(null);
-  const [slotId, setSlotId] = useState<string | null>(null);
+  // The exact time: a slot and which of its turns (0 = its first time).
+  const [start, setStart] = useState<{ slotId: string; place: number } | null>(null);
   const [customer, setCustomer] = useState<Customer>(EMPTY_CUSTOMER);
   const [website, setWebsite] = useState("");
   const [error, setError] = useState("");
@@ -111,15 +111,22 @@ export function BookingFlow({
   const tab = extraAreas.includes(extrasTab) ? extrasTab : extraAreas[0];
   const unitsNeeded = quote?.capacityUnits ?? 1;
 
+  const notBefore = earliestStart(data.rules, now);
   const slotsByDate = new Map(
     bookableDates(data.rules, now).map((day) => [
       day,
-      slotsForDate({ date: day, slots: data.slots, usage: data.usage, rules: data.rules, now, unitsNeeded }),
+      slotsForDate({ date: day, slots: data.slots, usage: data.usage, unitsNeeded, notBefore }),
     ]),
   );
   const dates = daysWithTimeLeft(slotsByDate);
   const daySlots = date ? (slotsByDate.get(date) ?? []) : [];
-  const slot = daySlots.some((item) => item.id === slotId && item.status === "available") ? slotId : null;
+  const chosen =
+    start &&
+    daySlots
+      .find((item) => item.id === start.slotId)
+      ?.starts.some((item) => item.place === start.place && item.status === "available")
+      ? start
+      : null;
 
   const brandStyle = {
     "--brand": data.business.brandColor,
@@ -139,10 +146,10 @@ export function BookingFlow({
         ? "Elige un servicio."
         : !zoneId
           ? "Elige tu colonia."
-          : !date || !slot
-            ? "Elige el día y el horario."
+          : !date || !chosen
+            ? "Elige el día y la hora."
             : null;
-    if (missing || !vehicleTypeId || !base || !zoneId || !date || !slot) {
+    if (missing || !vehicleTypeId || !base || !zoneId || !date || !chosen) {
       setError(missing ?? "Revisa tus datos.");
       return;
     }
@@ -153,7 +160,8 @@ export function BookingFlow({
       extraServiceIds: extras,
       zoneId,
       date,
-      timeSlotId: slot,
+      timeSlotId: chosen.slotId,
+      startPlace: chosen.place,
       customer,
       website,
     };
@@ -369,7 +377,7 @@ export function BookingFlow({
         )}
       </Step>
 
-      <Step number={5} title="Día y horario" icon={CalendarCheck}>
+      <Step number={5} title="Día y hora" icon={CalendarCheck}>
         {dates.length === 0 ? (
           <Hint>Por ahora no hay días disponibles. Escríbenos por WhatsApp.</Hint>
         ) : (
@@ -399,23 +407,47 @@ export function BookingFlow({
               })}
             </div>
             {date && (
-              <div className="mt-3 space-y-2">
+              <div className="mt-3 space-y-4">
                 {daySlots.map((item) => (
-                  <Choice
-                    key={item.id}
-                    selected={item.id === slot}
-                    disabled={item.status !== "available"}
-                    onClick={() => setSlotId(item.id)}
-                  >
-                    <span className="flex justify-between gap-3">
-                      <span>
-                        <span className="font-medium">{item.name}</span> · {formatClockTime(item.startTime)} a{" "}
-                        {formatClockTime(item.endTime)}
+                  <div key={item.id} role="group" aria-label={item.name} className="space-y-2">
+                    <p className="flex items-baseline justify-between gap-3 text-sm">
+                      <span className="font-semibold">{item.name}</span>
+                      <span className="text-muted-foreground">
+                        {item.status === "available"
+                          ? `${formatClockTime(item.startTime)} a ${formatClockTime(item.endTime)}`
+                          : SLOT_STATUS_TEXT[item.status]}
                       </span>
-                      <span className="shrink-0 text-sm">{SLOT_STATUS_TEXT[item.status]}</span>
-                    </span>
-                  </Choice>
+                    </p>
+                    {item.status === "available" && (
+                      <div className="grid grid-cols-3 gap-2">
+                        {item.starts
+                          .filter((time) => time.status !== "too_soon")
+                          .map((time) => {
+                            const taken = time.status !== "available";
+                            const selected = chosen?.slotId === item.id && chosen.place === time.place;
+                            return (
+                              <button
+                                key={time.place}
+                                type="button"
+                                disabled={taken}
+                                onClick={() => setStart({ slotId: item.id, place: time.place })}
+                                aria-pressed={selected}
+                                aria-label={`${formatClockTime(time.time)}${taken ? ", ocupado" : ""}`}
+                                className={cn(
+                                  "h-11 rounded-xl border-2 bg-card text-base font-semibold transition-colors",
+                                  selected ? "border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-text)]" : "border-border",
+                                  taken && "border-dashed font-normal text-muted-foreground line-through opacity-60",
+                                )}
+                              >
+                                {formatClockTime(time.time)}
+                              </button>
+                            );
+                          })}
+                      </div>
+                    )}
+                  </div>
                 ))}
+                <Hint>Es la hora en que llegamos a tu domicilio.</Hint>
               </div>
             )}
           </>
@@ -583,9 +615,7 @@ function Summary({
       <CarSummary parts={parts} color={brandColor} title="Esto le haremos a tu auto" />
       <section className="space-y-1 rounded-xl border bg-card p-4 text-sm shadow-sm">
         <p className="font-medium first-letter:uppercase">{summary.dateLabel}</p>
-        <p>
-          {summary.slot.name} · {formatClockTime(summary.slot.startTime)} a {formatClockTime(summary.slot.endTime)}
-        </p>
+        <p>{arrivalLabel(summary.slot)}</p>
         <p className="pt-2">
           {summary.customer.address}
           {quote.zone && `, ${quote.zone.name}`}
@@ -864,13 +894,11 @@ function Step({
 function Choice({
   selected,
   onClick,
-  disabled,
   role,
   children,
 }: {
   selected: boolean;
   onClick: () => void;
-  disabled?: boolean;
   role?: "checkbox";
   children: ReactNode;
 }) {
@@ -878,12 +906,11 @@ function Choice({
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
       role={role}
       aria-checked={role === "checkbox" ? selected : undefined}
       aria-pressed={role === "checkbox" ? undefined : selected}
       className={cn(
-        "block w-full rounded-xl border-2 bg-card p-4 text-left transition-colors disabled:opacity-50",
+        "block w-full rounded-xl border-2 bg-card p-4 text-left transition-colors",
         selected ? "border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-text)]" : "border-border",
       )}
     >

@@ -78,11 +78,13 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
 - Formularios: `useFormAction` (`src/components/panel/use-form-action.ts`) evita que React borre lo escrito
   cuando hay un error; tras guardar, la acción llama `refresh()`.
 - Agenda (`/panel/agenda`, primera opción del panel): calendario del mes (`?mes=YYYY-MM&dia=YYYY-MM-DD`, el día
-  elegido se guarda con `history.replaceState`) y las reservas del día por franja. Datos: `getAgendaMonth()`
+  elegido se guarda con `history.replaceState`) y el día por hora exacta (`slotRows`: cada reserva en su hora y las
+  horas libres con "Agregar", que abre `/panel/agenda/nueva?dia=…&horario=…&lugar=…`). Datos: `getAgendaMonth()`
   (`src/lib/panel/agenda-data.ts`); reglas puras en `src/lib/agenda.ts` (estados y cambios permitidos: terminada y
   "no llegó" se pueden deshacer, cancelada no). Recordatorio wa.me al cliente: `src/lib/reminder-message.ts`.
 - Reservas manuales (`/panel/agenda/nueva`) y reagendar pasan por `create_manual_booking` / `reschedule_booking`
-  (security definer, revisan que sea miembro, bloquean la franja y cuentan lugares con `private.used_units`). Las
+  (security definer, revisan que sea miembro, bloquean la franja y revisan la hora con `private.places_free`). La
+  hora se elige con `TimePicker` (`src/app/panel/agenda/slot-picker.tsx`) sobre `getDaySlots(fecha, reservaQueSeMueve)`. Las
   manuales nacen confirmadas, sin anticipo, con precio del catálogo calculado en el servidor. Estado, notas y saldo
   pagado son updates normales con RLS; fecha y montos no se pueden editar directo.
 - Acceso al panel ("Tu negocio" → Acceso al panel): los miembros invitan por correo con `grant_business_access`
@@ -100,10 +102,15 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
 - El resumen oficial lo arma la Server Action `prepareQuote` (`src/app/[slug]/actions.ts`): recibe solo ids y
   datos del cliente (Zod en `src/lib/booking-request.ts`, con honeypot), vuelve a leer la BD y revisa el horario.
 - Lugares: cada franja tiene `capacity` lugares; cada servicio ocupa `capacity_units` (reserva = suma, mínimo 1).
+- Hora exacta: los lugares de una franja son turnos seguidos (`placeTime`: inicio + duración × lugar ÷ lugares,
+  redondeado a 5 min; igual en SQL con `private.place_time`). La reserva guarda `start_place` (primer lugar) y
+  `arrival_time`, y ocupa `capacity_units` lugares seguidos. Reglas en `slotsForDate` (`src/lib/availability.ts`) y
+  `private.places_free` (las dos iguales): cabe si hay lugares libres en total y ninguna reserva con lugar se
+  encima. Las funciones que crean o mueven reservas reciben `start_place` (sin él toman el primero libre).
 - Los extras van plegados tras "¿Le agregamos algo a tu auto?" (pedido del dueño: no saturar a quien solo quiere el
   lavado).
 - Un servicio principal con `includes_extras` (Full detailing) oculta los extras y `calculateQuote` los ignora.
-  Lo ocupado sale de la función `public.slot_usage` (solo conteos; las reservas no son públicas).
+  Lo ocupado sale de la función `public.slot_places` (solo lugar de inicio y tamaño; las reservas no son públicas).
 - Servicios: `area` (exterior/interior) y `car_parts` (partes del auto, `src/lib/car-parts.ts`). La página agrupa los
   extras en pestañas y `CarDiagram` (`src/components/car-diagram.tsx`) ilumina las partes elegidas; el panel los
   acomoda con flechas (`moveService`: orden 10, 20, 30… dentro de cada grupo).

@@ -10,6 +10,7 @@ const valid = {
   zoneId: "2b3c4d5e-6f70-4a81-92b3-c4d5e6f70812",
   date: "2026-10-13",
   timeSlotId: "3c4d5e6f-7081-4a92-a3b4-d5e6f7081923",
+  startPlace: 1,
   customer: {
     name: " Ana López ",
     phone: "+52 33 1234 5678",
@@ -36,6 +37,8 @@ describe("bookingRequestSchema", () => {
     const cases: [object, string][] = [
       [{ ...valid, zoneId: "" }, "Elige tu colonia."],
       [{ ...valid, timeSlotId: "" }, "Elige el horario."],
+      [{ ...valid, startPlace: undefined }, "Elige la hora."],
+      [{ ...valid, startPlace: 1.5 }, "Elige la hora."],
       [{ ...valid, customer: { ...valid.customer, phone: "33 1234" } }, "Escribe tu celular a 10 dígitos."],
       [{ ...valid, customer: { ...valid.customer, email: "ana@" } }, "Revisa tu correo."],
       [{ ...valid, customer: { ...valid.customer, address: "x" } }, "Escribe tu dirección (calle, número y colonia)."],

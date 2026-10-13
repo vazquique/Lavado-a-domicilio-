@@ -11,6 +11,8 @@ export const bookingRequestSchema = z.object({
   zoneId: z.uuid({ error: "Elige tu colonia." }),
   date: z.iso.date({ error: "Elige el día." }),
   timeSlotId: z.uuid({ error: "Elige el horario." }),
+  // Which turn of the slot (0 = its first time); the server turns it into the clock time.
+  startPlace: z.number({ error: "Elige la hora." }).int().min(0).max(99),
   customer: z.object({
     name: z.string().trim().min(2, "Escribe tu nombre.").max(100, "Tu nombre es muy largo."),
     phone: z.string().transform((value, ctx) => {

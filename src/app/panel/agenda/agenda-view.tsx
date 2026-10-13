@@ -1,11 +1,11 @@
 "use client";
 
-import { CalendarPlus, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarPlus, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type CSSProperties } from "react";
 import { Button } from "@/components/ui/button";
-import { dayLoad, formatMonth, isActiveBooking, monthOf, shiftMonth, type DayLoad } from "@/lib/agenda";
+import { dayLoad, formatMonth, isActiveBooking, monthOf, shiftMonth, slotRows, type DayLoad } from "@/lib/agenda";
 import { formatLongDate, isoWeekday } from "@/lib/dates";
 import type { ActionState } from "@/lib/panel/action-state";
 import type { AgendaBooking, AgendaMonth } from "@/lib/panel/agenda-data";
@@ -24,7 +24,8 @@ const LOAD_STYLES: Record<DayLoad, string> = {
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-// Month calendar with how busy each day is, and the chosen day's bookings by time slot.
+// Month calendar with how busy each day is, and the chosen day's bookings by exact time:
+// each slot's times with the booking at each one, or free (tap to add one there).
 export function AgendaView({
   data,
   today,
@@ -221,6 +222,9 @@ export function AgendaView({
         {daySlots.map((slot) => {
           const inSlot = active.filter((booking) => booking.timeSlotId === slot.id);
           const used = inSlot.reduce((sum, booking) => sum + booking.capacityUnits, 0);
+          const { rows, loose } = slotRows(slot, inSlot);
+          const hasRoom = used < slot.capacity;
+          const canAdd = slot.active && hasRoom && selected >= today;
           return (
             <div key={slot.id} className="space-y-2">
               <h3 className="flex items-baseline justify-between gap-2 text-sm font-semibold">
@@ -231,19 +235,41 @@ export function AgendaView({
                   {used} de {slot.capacity} lugares
                 </span>
               </h3>
-              {inSlot.length === 0 ? (
-                <p className="rounded-xl border border-dashed px-3 py-2 text-sm text-muted-foreground">Libre</p>
-              ) : (
-                inSlot.map((booking) => (
-                  <BookingCard
-                    key={booking.id}
-                    booking={booking}
-                    today={today}
-                    onResult={setNotice}
-                    onMoved={followTo}
-                  />
-                ))
+              {rows.map((row) =>
+                row.bookings.length > 0 ? (
+                  row.bookings.map((booking) => (
+                    <BookingCard
+                      key={booking.id}
+                      booking={booking}
+                      today={today}
+                      onResult={setNotice}
+                      onMoved={followTo}
+                    />
+                  ))
+                ) : slot.active ? (
+                  <div
+                    key={`free-${row.place}`}
+                    className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-dashed px-3 text-sm"
+                  >
+                    <span>
+                      <span className="font-semibold tabular-nums">{formatClockTime(row.time)}</span>
+                      <span className="text-muted-foreground"> · {hasRoom ? "Libre" : "Sin lugar"}</span>
+                    </span>
+                    {canAdd && (
+                      <Link
+                        href={`/panel/agenda/nueva?dia=${selected}&horario=${slot.id}&lugar=${row.place}`}
+                        aria-label={`Agregar reserva a las ${formatClockTime(row.time)}`}
+                        className="flex items-center gap-1 font-medium text-[var(--brand)]"
+                      >
+                        <Plus className="size-4" aria-hidden /> Agregar
+                      </Link>
+                    )}
+                  </div>
+                ) : null,
               )}
+              {loose.map((booking) => (
+                <BookingCard key={booking.id} booking={booking} today={today} onResult={setNotice} onMoved={followTo} />
+              ))}
             </div>
           );
         })}

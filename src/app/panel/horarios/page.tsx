@@ -10,7 +10,7 @@ export default function SchedulePage() {
     <div className="space-y-6">
       <SectionHeader
         title="Horarios"
-        description="Franjas que el cliente puede elegir y cuántos lugares tiene cada una. Cada servicio ocupa los lugares que le pongas en Servicios y precios."
+        description="Cada franja se parte en horas exactas, una por lugar: tus clientes eligen una hora libre. Un servicio que ocupa 2 lugares (en Servicios y precios) toma 2 horas seguidas."
       />
       <Suspense fallback={<PanelLoading />}>
         <ScheduleEditor />

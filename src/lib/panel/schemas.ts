@@ -184,7 +184,11 @@ export const manualBookingSchema = z.object({
   extraServiceIds: z.array(z.uuid({ error: "Extras: elige de la lista." })).max(30),
   zoneId: z.preprocess((value) => (value === "" || value === null ? null : value), z.uuid().nullable()),
   date: z.iso.date({ error: "Elige el día." }),
-  timeSlotId: z.uuid({ error: "Elige el horario." }),
+  timeSlotId: z.uuid({ error: "Elige la hora." }),
+  startPlace: z.preprocess(
+    (value) => (value === "" || value === null ? undefined : value),
+    z.coerce.number({ error: "Elige la hora." }).int("Elige la hora.").min(0, "Elige la hora.").max(99, "Elige la hora."),
+  ),
   customerName: requiredText("Nombre del cliente", 100),
   customerPhone: phoneField("Celular del cliente"),
   address: requiredText("Dirección", 300),

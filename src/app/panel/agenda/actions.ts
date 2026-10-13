@@ -3,7 +3,8 @@
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { canChangeStatus, isBookingStatus, type BookingStatus } from "@/lib/agenda";
+import { canChangeStatus, isBookingStatus, takesPlace, type BookingStatus } from "@/lib/agenda";
+import type { PlaceUsage, SlotRule } from "@/lib/availability";
 import { getBookingData } from "@/lib/booking-data";
 import { formatLongDate, isoWeekday, todayInMexico } from "@/lib/dates";
 import { dbFailure, failure, isUuid, success, type ActionState } from "@/lib/panel/action-state";
@@ -90,18 +91,26 @@ export async function saveBookingNotes(_prev: ActionState, formData: FormData): 
   return success("Notas guardadas.");
 }
 
-export type DaySlot = { id: string; name: string; startTime: string; endTime: string; capacity: number; freeUnits: number };
-
 export type DaySlots =
-  | { ok: true; date: string; working: boolean; blockedReason: string | null; slots: DaySlot[] }
+  | {
+      ok: true;
+      date: string;
+      working: boolean;
+      blockedReason: string | null;
+      slots: SlotRule[];
+      // Places taken that day (the booking being moved doesn't count).
+      usage: PlaceUsage[];
+    }
   | { ok: false; message: string };
 
-// Free places per time slot on a day, for moving a booking or adding one by hand.
-export async function getDaySlots(date: string): Promise<DaySlots> {
+// The time slots of a day and their taken places, for moving a booking or adding one by
+// hand. The picker works out the free times with the same rules as the booking page.
+export async function getDaySlots(date: string, exceptBookingId: string | null = null): Promise<DaySlots> {
   const { supabase, business } = await requirePanelBusiness();
   if (!isDate(date)) return { ok: false, message: "Elige un día." };
+  if (exceptBookingId !== null && !isUuid(exceptBookingId)) return { ok: false, message: NOT_FOUND };
 
-  const [settings, slots, blocked, usage] = await Promise.all([
+  const [settings, slots, blocked, bookings] = await Promise.all([
     supabase.from("businesses").select("working_days").eq("id", business.id).single(),
     supabase
       .from("time_slots")
@@ -111,15 +120,17 @@ export async function getDaySlots(date: string): Promise<DaySlots> {
       .order("sort_order")
       .order("start_time"),
     supabase.from("blocked_dates").select("reason").eq("business_id", business.id).eq("date", date).maybeSingle(),
-    supabase.rpc("slot_usage", { p_business_id: business.id, p_from: date, p_to: date }),
+    supabase
+      .from("bookings")
+      .select("id, time_slot_id, start_place, capacity_units, status, hold_expires_at")
+      .eq("business_id", business.id)
+      .eq("service_date", date),
   ]);
-  for (const result of [settings, slots, blocked, usage]) {
+  for (const result of [settings, slots, blocked, bookings]) {
     if (result.error) throw result.error;
   }
 
-  const used = new Map(
-    ((usage.data ?? []) as { time_slot_id: string; used_units: number }[]).map((row) => [row.time_slot_id, row.used_units]),
-  );
+  const now = new Date();
   return {
     ok: true,
     date,
@@ -131,22 +142,38 @@ export async function getDaySlots(date: string): Promise<DaySlots> {
       startTime: slot.start_time,
       endTime: slot.end_time,
       capacity: slot.capacity,
-      freeUnits: Math.max(0, slot.capacity - (used.get(slot.id) ?? 0)),
     })),
+    usage: (bookings.data ?? []).flatMap((row) =>
+      row.id !== exceptBookingId &&
+      isBookingStatus(row.status) &&
+      takesPlace({ status: row.status, holdExpiresAt: row.hold_expires_at }, now)
+        ? [{ date, timeSlotId: row.time_slot_id, startPlace: row.start_place, units: row.capacity_units }]
+        : [],
+    ),
   };
 }
 
-// Another day or time slot, if there's room there (checked by the database, which locks
-// the slot so nobody takes the last place at the same time).
-export async function rescheduleBooking(bookingId: string, date: string, timeSlotId: string): Promise<ActionState> {
+const placeSchema = z.number().int().min(0).max(99);
+
+// Another day and time, if there's room there (checked by the database, which locks the
+// slot so nobody takes the last place at the same time).
+export async function rescheduleBooking(
+  bookingId: string,
+  date: string,
+  timeSlotId: string,
+  startPlace: number,
+): Promise<ActionState> {
   const { supabase } = await requirePanelBusiness();
-  if (!isUuid(bookingId) || !isUuid(timeSlotId) || !isDate(date)) return failure("Elige el día y el horario.");
+  if (!isUuid(bookingId) || !isUuid(timeSlotId) || !isDate(date) || !placeSchema.safeParse(startPlace).success) {
+    return failure("Elige el día y la hora.");
+  }
   if (date < todayInMexico()) return failure("Elige un día de hoy en adelante.");
 
   const { data, error } = await supabase.rpc("reschedule_booking", {
     p_booking_id: bookingId,
     p_date: date,
     p_slot_id: timeSlotId,
+    p_start_place: startPlace,
   });
   if (error) return dbFailure(error);
   switch (data) {
@@ -154,7 +181,7 @@ export async function rescheduleBooking(bookingId: string, date: string, timeSlo
       refresh();
       return success(`Listo, quedó para el ${formatLongDate(date)}.`);
     case "full":
-      return failure("Ese horario ya está lleno ese día. Elige otro.");
+      return failure("Esa hora ya está ocupada ese día. Elige otra.");
     case "no_slot":
       return failure("Ese horario ya no existe. Elige otro.");
     default:
@@ -180,6 +207,7 @@ export async function createManualBooking(_prev: ActionState, formData: FormData
     zoneId: formData.get("zoneId"),
     date: formData.get("date"),
     timeSlotId: formData.get("timeSlotId"),
+    startPlace: formData.get("startPlace"),
     customerName: formData.get("customerName"),
     customerPhone: formData.get("customerPhone"),
     address: formData.get("address"),
@@ -207,6 +235,7 @@ export async function createManualBooking(_prev: ActionState, formData: FormData
       business_id: business.id,
       service_date: input.date,
       time_slot_id: input.timeSlotId,
+      start_place: input.startPlace,
       vehicle_type_id: quote.vehicle.id,
       zone_id: quote.zone?.id ?? null,
       capacity_units: quote.capacityUnits,
@@ -231,7 +260,7 @@ export async function createManualBooking(_prev: ActionState, formData: FormData
   });
   if (error) return dbFailure(error);
   const booking = (created as { booking_id: string; booking_folio: string }[] | null)?.[0];
-  if (!booking) return failure("Ese horario ya está lleno ese día. Elige otro.");
+  if (!booking) return failure("Esa hora ya está ocupada ese día. Elige otra.");
 
   redirect(`/panel/agenda?dia=${input.date}&nueva=${encodeURIComponent(booking.booking_folio)}`);
 }

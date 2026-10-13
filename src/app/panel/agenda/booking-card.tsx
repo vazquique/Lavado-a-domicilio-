@@ -8,6 +8,7 @@ import { STATUS_LABELS, type BookingStatus } from "@/lib/agenda";
 import { idleState, type ActionState } from "@/lib/panel/action-state";
 import type { AgendaBooking } from "@/lib/panel/agenda-data";
 import { formatMXN } from "@/lib/money";
+import { formatClockTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { changeBookingStatus, saveBookingNotes, setBalancePaid } from "./actions";
 import { RescheduleForm } from "./reschedule-form";
@@ -59,10 +60,18 @@ export function BookingCard({
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", STATUS_STYLES[status])}>
-          {STATUS_LABELS[status]}
+        <span className="flex flex-wrap items-center gap-2">
+          {booking.arrivalTime && (
+            <span className="text-base font-bold tabular-nums">
+              {formatClockTime(booking.arrivalTime)}
+              {booking.untilTime && ` a ${formatClockTime(booking.untilTime)}`}
+            </span>
+          )}
+          <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", STATUS_STYLES[status])}>
+            {STATUS_LABELS[status]}
+          </span>
         </span>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-right text-xs text-muted-foreground">
           {booking.folio} ·{" "}
           {booking.source === "manual"
             ? "La agregaste tú"

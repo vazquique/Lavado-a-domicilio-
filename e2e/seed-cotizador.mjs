@@ -1,5 +1,6 @@
 // Test data for e2e/cotizador.mjs in the local Supabase emulator.
-// Test data in the local Supabase: prices for some extras and a full morning tomorrow.
+// Test data in the local Supabase: prices for some extras and a booking tomorrow at 10:20
+// (the morning's second place), so that time shows as taken.
 const base = "http://127.0.0.1:54321/rest/v1";
 const headers = { Authorization: "Bearer sb_secret_local", "Content-Type": "application/json", Prefer: "return=representation" };
 const get = async (path) => (await fetch(`${base}/${path}`, { headers })).json();
@@ -28,7 +29,7 @@ r = await fetch(`${base}/bookings`, {
     business_id: business.id, status: "confirmed", source: "manual", service_date: tomorrow, time_slot_id: morning,
     customer_name: "Ocupado", customer_phone: "3311111111", address: "Calle 1", vehicle_type_name: "Carro normal",
     time_slot_name: "Mañana", items: [], subtotal_cents: 23000, surcharge_cents: 0, total_cents: 23000,
-    deposit_cents: 0, capacity_units: 3,
+    deposit_cents: 0, capacity_units: 1, start_place: 1, arrival_time: "10:20",
   }),
 });
 console.log("booking", r.status, tomorrow);

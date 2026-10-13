@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input";
 import type { ActionState } from "@/lib/panel/action-state";
 import type { AgendaBooking } from "@/lib/panel/agenda-data";
 import { getDaySlots, rescheduleBooking, type DaySlots } from "./actions";
-import { SlotPicker } from "./slot-picker";
+import { freeChoice, TimePicker, type ChosenTime } from "./slot-picker";
 
-// Pick another day and time slot for a booking; shows how many places each slot has free.
+// Pick another day and exact time for a booking; its own places count as free.
 export function RescheduleForm({
   booking,
   today,
@@ -24,33 +24,26 @@ export function RescheduleForm({
 }) {
   const [date, setDate] = useState(booking.serviceDate < today ? today : booking.serviceDate);
   const [day, setDay] = useState<DaySlots | null>(null);
-  const [slotId, setSlotId] = useState<string | null>(null);
+  const [time, setTime] = useState<ChosenTime | null>(null);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
     let current = true;
-    getDaySlots(date).then((result) => {
+    getDaySlots(date, booking.id).then((result) => {
       if (current) setDay(result);
     });
     return () => {
       current = false;
     };
-  }, [date]);
+  }, [date, booking.id]);
 
-  // The booking's own places count as free in its own slot.
-  const slots =
-    day?.ok && day.date === date
-      ? day.slots.map((slot) =>
-          date === booking.serviceDate && slot.id === booking.timeSlotId
-            ? { ...slot, freeUnits: slot.freeUnits + booking.capacityUnits }
-            : slot,
-        )
-      : null;
+  const loaded = day?.ok && day.date === date ? day : null;
+  const chosen = loaded ? freeChoice(time, loaded, booking.capacityUnits) : null;
 
   function move() {
-    if (!slotId) return;
+    if (!chosen) return;
     startTransition(async () => {
-      const result = await rescheduleBooking(booking.id, date, slotId);
+      const result = await rescheduleBooking(booking.id, date, chosen.slotId, chosen.place);
       if (result.status === "success") onDone(result, date);
       else onError(result);
     });
@@ -66,29 +59,30 @@ export function RescheduleForm({
         aria-label="Nuevo día"
         onChange={(event) => {
           setDate(event.target.value);
-          setSlotId(null);
+          setTime(null);
         }}
       />
       {day?.ok === false && <p className="text-sm text-destructive">{day.message}</p>}
-      {day?.ok && day.date === date && day.blockedReason !== null && (
-        <p className="text-sm text-amber-800">Ese día está bloqueado ({day.blockedReason}). Puedes moverla igual.</p>
+      {loaded && loaded.blockedReason !== null && (
+        <p className="text-sm text-amber-800">Ese día está bloqueado ({loaded.blockedReason}). Puedes moverla igual.</p>
       )}
-      {day?.ok && day.date === date && day.blockedReason === null && !day.working && (
+      {loaded && loaded.blockedReason === null && !loaded.working && (
         <p className="text-sm text-amber-800">Ese día no trabajas. Puedes moverla igual.</p>
       )}
-      {slots ? (
-        <SlotPicker
-          name={`reschedule-${booking.id}`}
-          slots={slots}
+      {loaded ? (
+        <TimePicker
+          date={date}
+          slots={loaded.slots}
+          usage={loaded.usage}
           unitsNeeded={booking.capacityUnits}
-          value={slotId}
-          onChange={setSlotId}
+          value={chosen}
+          onChange={setTime}
         />
       ) : (
-        <p className="text-sm text-muted-foreground">Viendo qué horarios hay…</p>
+        <p className="text-sm text-muted-foreground">Viendo qué horas hay…</p>
       )}
       <div className="flex gap-2">
-        <Button size="sm" disabled={!slotId || pending} onClick={move}>
+        <Button size="sm" disabled={!chosen || pending} onClick={move}>
           {pending ? "Moviendo…" : "Mover reserva"}
         </Button>
         <Button size="sm" variant="ghost" onClick={onClose}>

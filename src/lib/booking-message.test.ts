@@ -6,7 +6,7 @@ const booking: PaidBooking = {
   businessName: "JB's Bros",
   folio: "JBS-1042",
   serviceDate: "2026-10-20",
-  slot: { name: "Mañana", startTime: "09:00:00", endTime: "13:00:00" },
+  slot: { name: "Mañana", startTime: "09:00:00", endTime: "13:00:00", arrivalTime: "10:20:00" },
   address: "Av. Siempre Viva 742",
   references: "Portón negro",
   zoneName: "Capital Norte",
@@ -25,7 +25,7 @@ describe("paidBookingMessage", () => {
         "Hola JB's Bros, ya pagué mi reserva JBS-1042:",
         "",
         "Fecha: martes, 20 de octubre de 2026",
-        "Horario: Mañana (9:00 a 13:00)",
+        "Horario: 10:20 (Mañana)",
         "Dirección: Av. Siempre Viva 742, Capital Norte",
         "Referencias: Portón negro",
         "Vehículo: Carro normal",
@@ -48,6 +48,11 @@ describe("paidBookingMessage", () => {
     expect(message).not.toContain("Anticipo");
   });
 
+  test("a booking from before exact times shows its whole slot", () => {
+    const message = paidBookingMessage({ ...booking, slot: { ...booking.slot, arrivalTime: null } });
+    expect(message).toContain("Horario: Mañana (9:00 a 13:00)");
+  });
+
   test("says when everything was paid", () => {
     const message = paidBookingMessage({ ...booking, references: "", paidCents: 63000, balanceCents: 0 });
     expect(message).toContain("Total: $630 (pagado completo)");
@@ -59,7 +64,8 @@ describe("paidBookingMessage", () => {
 describe("confirmedBookingEmail", () => {
   test("subject and text name the folio, date and slot", () => {
     const email = confirmedBookingEmail(booking);
-    expect(email.subject).toBe("Nueva reserva JBS-1042: martes, 20 de octubre de 2026, Mañana");
+    expect(email.subject).toBe("Nueva reserva JBS-1042: martes, 20 de octubre de 2026, 10:20 (Mañana)");
+    expect(email.text).toContain("Horario: 10:20 (Mañana)");
     expect(email.text).toContain("Celular: 33 1234 5678");
     expect(email.text).toContain("Anticipo pagado: $315");
     expect(email.text).toContain("https://wa.me/523312345678");

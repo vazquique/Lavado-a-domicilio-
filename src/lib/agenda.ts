@@ -1,6 +1,7 @@
 // The panel's agenda: the days a month shows, what each booking status means and which
 // changes the owner can make. Pure functions: the page uses them to draw the calendar and
 // the Server Actions check them again before saving.
+import { placeTime } from "./availability";
 import { addDays, isoWeekday } from "./dates";
 
 export const BOOKING_STATUSES = ["pending_payment", "confirmed", "completed", "cancelled", "no_show", "expired"] as const;
@@ -93,4 +94,27 @@ export function dayLoad(usedUnits: number, capacityUnits: number): DayLoad {
   if (usedUnits <= 0) return "none";
   if (capacityUnits <= 0 || usedUnits >= capacityUnits) return "full";
   return usedUnits / capacityUnits >= 0.5 ? "busy" : "some";
+}
+
+// One slot of a day by exact time: each place with the bookings that start there, or
+// free. Places in the middle of a booking that takes several aren't rows of their own.
+// Bookings without a place (from before exact times, or past the places the slot has now)
+// come apart, in `loose`.
+export type SlotRow<B> = { place: number; time: string; bookings: B[] };
+
+export function slotRows<B extends { startPlace: number | null; capacityUnits: number }>(
+  slot: { startTime: string; endTime: string; capacity: number },
+  bookings: B[],
+): { rows: SlotRow<B>[]; loose: B[] } {
+  const rows: SlotRow<B>[] = [];
+  for (let place = 0; place < slot.capacity; place++) {
+    const starting = bookings.filter((booking) => booking.startPlace === place);
+    const covered = bookings.some(
+      (booking) =>
+        booking.startPlace !== null && booking.startPlace < place && booking.startPlace + booking.capacityUnits > place,
+    );
+    if (starting.length > 0 || !covered) rows.push({ place, time: placeTime(slot, place), bookings: starting });
+  }
+  const loose = bookings.filter((booking) => booking.startPlace === null || booking.startPlace >= slot.capacity);
+  return { rows, loose };
 }

@@ -1,6 +1,7 @@
 import { formatLongDate } from "./dates";
-import { paymentLines, slotLabel, type PaidBooking } from "./booking-message";
+import { paymentLines, type PaidBooking } from "./booking-message";
 import { formatMxPhone } from "./quote-message";
+import { slotLabel } from "./time";
 
 export type Email = { subject: string; text: string; html: string };
 
@@ -32,7 +33,7 @@ export function confirmedBookingEmail(booking: PaidBooking): Email {
   const money = paymentLines(booking);
   const kind = booking.paidCents > 0 ? "nueva reserva pagada en línea" : "nueva reserva, paga en efectivo el día del servicio";
 
-  const subject = `Nueva reserva ${booking.folio}: ${date}, ${booking.slot.name}`;
+  const subject = `Nueva reserva ${booking.folio}: ${date}, ${slotLabel(booking.slot)}`;
   const text = [
     `${booking.businessName}: ${kind}.`,
     "",

@@ -7,6 +7,7 @@ import {
   isMonth,
   monthGrid,
   shiftMonth,
+  slotRows,
   takesPlace,
 } from "./agenda";
 
@@ -82,5 +83,32 @@ describe("dayLoad", () => {
     expect(dayLoad(3, 6)).toBe("busy");
     expect(dayLoad(6, 6)).toBe("full");
     expect(dayLoad(1, 0)).toBe("full");
+  });
+});
+
+describe("slotRows", () => {
+  const morning = { startTime: "09:00:00", endTime: "13:00:00", capacity: 3 };
+  const booking = (name: string, startPlace: number | null, capacityUnits = 1) => ({ name, startPlace, capacityUnits });
+  const view = (result: ReturnType<typeof slotRows<ReturnType<typeof booking>>>) => ({
+    rows: result.rows.map((row) => `${row.time} ${row.bookings.map((item) => item.name).join(", ") || "libre"}`),
+    loose: result.loose.map((item) => item.name),
+  });
+
+  test("an empty slot is all free times", () => {
+    expect(view(slotRows(morning, []))).toEqual({ rows: ["09:00 libre", "10:20 libre", "11:40 libre"], loose: [] });
+  });
+
+  test("each booking at its time; one of two places covers the next time", () => {
+    expect(view(slotRows(morning, [booking("Beto", 1, 2), booking("Ana", 0)]))).toEqual({
+      rows: ["09:00 Ana", "10:20 Beto"],
+      loose: [],
+    });
+  });
+
+  test("bookings without a time come apart", () => {
+    expect(view(slotRows(morning, [booking("Ana", null), booking("Beto", 5), booking("Carla", 2)]))).toEqual({
+      rows: ["09:00 libre", "10:20 libre", "11:40 Carla"],
+      loose: ["Ana", "Beto"],
+    });
   });
 });

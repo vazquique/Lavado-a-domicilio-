@@ -37,11 +37,9 @@ async function quote({ days, phone, online = true }) {
   await page.click("button:has-text('Carro normal')");
   await page.click("button:has-text('Lavado normal')");
   await page.click("button:has-text('Capital Norte')");
-  await page
-    .locator("section", { hasText: "Día y horario" })
-    .locator(`button[aria-pressed]:has(span.text-lg:text-is("${dayInMexico(days)}"))`)
-    .click();
-  await page.locator("button.block:has-text('Tarde')").click();
+  const dayStep = page.locator("section", { has: page.locator("h2", { hasText: "Día y hora" }) });
+  await dayStep.locator(`button[aria-pressed]:has(span.text-lg:text-is("${dayInMexico(days)}"))`).click();
+  await dayStep.locator("[role=group][aria-label=Tarde] button[aria-label='14:40']").click();
   await page.fill("input[name=name]", "Ana López");
   await page.fill("input[name=phone]", phone);
   await page.fill("input[name=address]", "Av. Siempre Viva 742");
@@ -69,6 +67,7 @@ await page.waitForURL(/\/jbsbros\/reserva\//);
 await page.waitForSelector("text=¡Listo! Tu reserva está confirmada");
 const folio = (await text("section")).match(/JBS-\d+/)?.[0];
 step("confirmed: " + (await text("section")) + " | " + (await text("section >> nth=1")));
+check((await text("section >> nth=1")).includes("Llegamos a las 14:40 (Tarde)"), "the booking says the exact time");
 const wa = await page.locator("a:has-text('por WhatsApp')").getAttribute("href");
 check(wa.startsWith("https://wa.me/52") && decodeURIComponent(wa).includes(folio), "WhatsApp message has the folio");
 console.log(decodeURIComponent(wa.split("?text=")[1]));
@@ -77,6 +76,7 @@ await page.reload();
 await page.waitForSelector("text=¡Listo! Tu reserva está confirmada");
 let emails = await emailsSent(1);
 step(`business emails: ${emails.length} · ${emails[0]?.subject}`);
+check(emails[0]?.subject.endsWith("14:40 (Tarde)"), "the email says the exact time");
 check(emails.length === 1, "one email for the first booking");
 
 // 2. Everything at once; no webhook, so the return page asks Mercado Pago itself.
