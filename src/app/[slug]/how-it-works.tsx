@@ -3,7 +3,7 @@ import { readableTextColor, tintColor } from "@/lib/colors";
 
 const STEPS = [
   { icon: Smartphone, title: "Cotiza aquí", text: "Elige tus servicios y ve el precio al momento." },
-  { icon: CalendarCheck, title: "Aparta tu lugar", text: "Escoge el día y el horario que te quede." },
+  { icon: CalendarCheck, title: "Aparta tu lugar", text: "Escoge el día y la hora que te quede." },
   { icon: Truck, title: "Vamos a tu casa", text: "Llegamos a tu domicilio con todo lo necesario." },
   { icon: Sparkles, title: "Auto como nuevo", text: "Sin filas y sin moverte de tu casa." },
 ];
