@@ -1,6 +1,6 @@
 name: Auth settings
 
-# Applies supabase/auth (site URL, allowed redirects, Resend SMTP, Spanish login email)
+# Applies supabase/auth (site URL, allowed redirects, SMTP, Spanish login email)
 # to the Supabase project through the Management API.
 # The SUPABASE_ACCESS_TOKEN needs Auth Config and Project Settings with Read-write access.
 on:
@@ -19,6 +19,10 @@ jobs:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      # The business's Gmail and its app password: login codes reach anyone (Resend's test
+      # sender only reaches the owner). Used instead of Resend when both are set.
+      GMAIL_USER: ${{ secrets.GMAIL_USER }}
+      GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -51,14 +55,16 @@ jobs:
           }
 
           patch settings
-          if [ -n "$RESEND_API_KEY" ]; then
+          if { [ -n "$GMAIL_USER" ] && [ -n "$GMAIL_APP_PASSWORD" ]; } || [ -n "$RESEND_API_KEY" ]; then
             patch email
           else
-            echo "::warning::RESEND_API_KEY is not set: the Spanish login email (with the 6-digit code) can't be applied until it is."
+            echo "::warning::No GMAIL_USER and GMAIL_APP_PASSWORD (or RESEND_API_KEY): the Spanish login email (with the 6-digit code) can't be applied until they are set."
           fi
 
+          # The sender's address is never printed: the repository and its logs are public.
           node -e '
             const r = require(process.env.RUNNER_TEMP + "/response.json");
-            const keys = ["site_url", "uri_allow_list", "disable_signup", "mailer_otp_length", "smtp_host", "smtp_admin_email", "smtp_sender_name", "rate_limit_email_sent", "mailer_subjects_magic_link"];
+            const keys = ["site_url", "uri_allow_list", "disable_signup", "mailer_otp_length", "smtp_host", "smtp_sender_name", "rate_limit_email_sent", "mailer_subjects_magic_link"];
             for (const k of keys) console.log(k + ":", JSON.stringify(r[k]));
+            console.log("smtp_admin_email set:", Boolean(r.smtp_admin_email));
           '

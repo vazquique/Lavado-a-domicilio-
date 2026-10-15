@@ -91,9 +91,11 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
   (si ya tiene usuario, entra directo; si no, queda en `business_invites` hasta su primer login), ven la lista con
   `business_access` y quitan con `revoke_business_access` (nadie se quita a sí mismo). Nunca poner correos de
   terceros en migraciones: el repo es público.
-- Configuración de Auth como código: `supabase/auth/` (URL del sitio, redirecciones, correo en español, SMTP de
-  Resend) se aplica con `.github/workflows/auth-config.yml` vía Management API. El token necesita Auth Config y
-  Project Settings en lectura-escritura. Secreto extra: `RESEND_API_KEY`.
+- Configuración de Auth como código: `supabase/auth/` (URL del sitio, redirecciones, correo en español, SMTP) se
+  aplica con `.github/workflows/auth-config.yml` vía Management API. El token necesita Auth Config y Project
+  Settings en lectura-escritura. SMTP: el Gmail del negocio si existen los secretos `GMAIL_USER` y
+  `GMAIL_APP_PASSWORD` (le llega a cualquiera); si no, Resend con `RESEND_API_KEY` (solo le llega al dueño de la
+  cuenta de Resend). Nunca imprimir el correo del remitente en los logs: el repo es público.
 
 ## Cotizador (página pública)
 - `src/app/[slug]/page.tsx` carga todo con `getBookingData()` (`src/lib/booking-data.ts`) y lo pasa a
@@ -124,8 +126,12 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
 
 ## Pagos (Mercado Pago)
 - Checkout Pro por REST en `src/lib/mercadopago.ts` (nombres de campos del SDK oficial `mercadopago` 3.x).
-  Variables: `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_WEBHOOK_SECRET` y `RESEND_API_KEY` (correo al negocio). Sin
-  Mercado Pago, el resumen ofrece WhatsApp.
+  Variables: `MERCADOPAGO_ACCESS_TOKEN` y `MERCADOPAGO_WEBHOOK_SECRET`. Sin Mercado Pago, el resumen ofrece
+  WhatsApp.
+- Correo al negocio por cada reserva (`sendEmail`, `src/lib/email.ts`): sale del Gmail del negocio con
+  `GMAIL_USER` y `GMAIL_APP_PASSWORD` (contraseña de aplicación; nodemailer por smtp.gmail.com:465). Sin ellas usa
+  Resend (`RESEND_API_KEY`), que es lo que imita el Supabase local. Nunca lanza error: un correo fallido no
+  deshace la reserva.
 - El resumen pregunta "¿Cómo quieres pagar?": Efectivo (por defecto) o Tarjeta o transferencia (Mercado Pago; dice
   "Muy pronto" si no está configurado). `bookWithCash` (mismas revisiones que el pago, más máximo 3 reservas futuras
   por celular) llama `create_cash_booking`: confirmada al instante, sin anticipo, aparece en la agenda y manda el
@@ -138,7 +144,8 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
   confirma si el monto y la moneda cubren lo debido; devuelve si confirmó ahora para mandar el correo una vez).
   La página `/[slug]/reserva/[id]` hace lo mismo con el `payment_id` del regreso.
 - Ojo: dentro de un render, Next.js reutiliza lecturas GET idénticas; no vuelvas a leer lo que acabas de cambiar.
-- `/api/health` dice si el token funciona y si es de una cuenta de prueba (`mercadoPagoTestAccount`).
+- `/api/health` dice si el token funciona y si es de una cuenta de prueba (`mercadoPagoTestAccount`), y si Gmail
+  acepta la contraseña de aplicación (`gmailWorks`; entra sin mandar nada).
 - Local: `npm run supabase:local` también imita Mercado Pago (página de pago falsa y webhook firmado) y Resend.
 - Producción: webhook en `https://lavado-a-domicilio.vercel.app/api/webhooks/mercadopago`, evento "Pagos".
 

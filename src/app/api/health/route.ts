@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { getGmailConfig, gmailTransport } from "@/lib/email";
 import { getSupabaseSecretKey } from "@/lib/env";
 import { getMercadoPagoConfig } from "@/lib/mercadopago";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -35,6 +36,19 @@ async function mercadoPagoStatus() {
   }
 }
 
+// Whether Gmail accepts the business's address and app password: it logs in without
+// sending anything.
+async function gmailStatus() {
+  const gmail = getGmailConfig();
+  if (!gmail) return { gmail: false };
+  try {
+    await gmailTransport(gmail).verify();
+    return { gmail: true, gmailWorks: true };
+  } catch {
+    return { gmail: true, gmailWorks: false };
+  }
+}
+
 // Says which settings are present and whether the keys are accepted (never their values),
 // so the setup can be checked from outside after a deploy.
 export async function GET() {
@@ -50,6 +64,7 @@ export async function GET() {
     secretKeyKind: keyKind(getSupabaseSecretKey()),
     secretKeyWorks,
     ...(await mercadoPagoStatus()),
+    ...(await gmailStatus()),
     resend: Boolean(process.env.RESEND_API_KEY?.trim()),
   });
 }

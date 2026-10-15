@@ -12,10 +12,25 @@ const SUBJECT = "Tu código de acceso: {{ .Token }}";
 function settings() {
   const body = JSON.parse(read("./settings.json"));
   const product = JSON.parse(read("../../src/config/product.json"));
-  // Custom SMTP through Resend. Without it Supabase only emails the project's team
-  // and doesn't allow changing the email templates on the free plan.
+  // Custom SMTP. Without it Supabase only emails the project's team and doesn't allow
+  // changing the email templates on the free plan. The business's Gmail (with an app
+  // password) can write to anyone; Resend's test sender only to the Resend account's owner.
+  const gmailUser = process.env.GMAIL_USER?.trim();
+  const gmailPassword = process.env.GMAIL_APP_PASSWORD?.replace(/\s+/g, "");
   const resendApiKey = process.env.RESEND_API_KEY;
-  if (resendApiKey) {
+  if (gmailUser && gmailPassword) {
+    Object.assign(body, {
+      smtp_host: "smtp.gmail.com",
+      smtp_port: "465",
+      smtp_user: gmailUser,
+      smtp_pass: gmailPassword,
+      smtp_admin_email: gmailUser,
+      smtp_sender_name: product.name,
+      // Supabase starts at 2 emails per hour for the whole project. Gmail allows about
+      // 500 a day; each login sends one.
+      rate_limit_email_sent: 30,
+    });
+  } else if (resendApiKey) {
     Object.assign(body, {
       smtp_host: "smtp.resend.com",
       smtp_port: "465",

@@ -280,3 +280,13 @@ Respuestas del dueño y cambios de alcance aprobados, en orden.
   formulario con esa hora ya elegida). Agregar y reagendar también piden la hora exacta.
 - La hora queda guardada en la reserva tal como se apartó; mensajes, correo y recordatorio dicen "10:20 (Mañana)".
 - Las reservas que ya existían recibieron su hora en el orden en que se hicieron.
+
+### 2026-10-15 — Correos por Gmail (pedido del dueño)
+- A Omar no le llegaban ni el código para entrar al panel ni los avisos de reservas: el remitente de prueba de
+  Resend solo le escribe al dueño de la cuenta de Resend mientras no haya dominio propio.
+- El dueño eligió la opción gratis: un Gmail del negocio con contraseña de aplicación. De ahí salen el código de
+  acceso (SMTP de Supabase) y el aviso de cada reserva. Gmail permite unos 500 correos al día.
+- La contraseña de aplicación va solo en Vercel (`GMAIL_USER`, `GMAIL_APP_PASSWORD`) y en los secretos de GitHub
+  con los mismos nombres; el correo del negocio no se escribe en el código porque el repositorio es público.
+- Resend se queda de respaldo (y para las pruebas locales). Si algún día se compra un dominio, se puede volver a
+  Resend con un remitente del dominio.
