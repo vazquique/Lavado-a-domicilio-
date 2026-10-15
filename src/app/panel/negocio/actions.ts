@@ -16,6 +16,8 @@ export async function saveBusinessSettings(_prev: ActionState, formData: FormDat
     depositValue: formData.get("depositValue"),
     cancellationPolicy: formData.get("cancellationPolicy"),
     privacyNotice: formData.get("privacyNotice"),
+    priceNotice: formData.get("priceNotice"),
+    specialServicesNotice: formData.get("specialServicesNotice"),
   });
   if (!parsed.success) return failure(firstError(parsed.error));
 
@@ -30,6 +32,8 @@ export async function saveBusinessSettings(_prev: ActionState, formData: FormDat
       deposit_value: values.depositValue,
       cancellation_policy: values.cancellationPolicy,
       privacy_notice: values.privacyNotice,
+      price_notice: values.priceNotice,
+      special_services_notice: values.specialServicesNotice,
     })
     .eq("id", business.id);
   if (error) return dbFailure(error);

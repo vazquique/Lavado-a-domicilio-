@@ -162,4 +162,19 @@ describe("businessSettingsSchema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  test("the page's notices are trimmed, can be empty and have a limit", () => {
+    const deposit = { depositType: "percent", depositValue: "50" };
+    const result = businessSettingsSchema.parse({
+      ...base,
+      ...deposit,
+      priceNotice: "  El precio puede subir si hay lodo.  ",
+      specialServicesNotice: "",
+    });
+    expect(result.priceNotice).toBe("El precio puede subir si hay lodo.");
+    expect(result.specialServicesNotice).toBe("");
+    const long = businessSettingsSchema.safeParse({ ...base, ...deposit, priceNotice: "x".repeat(301) });
+    expect(long.success).toBe(false);
+    if (!long.success) expect(firstError(long.error)).toBe("Aviso de precios: máximo 300 caracteres.");
+  });
 });

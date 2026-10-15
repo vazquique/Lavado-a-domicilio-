@@ -22,6 +22,11 @@ const serviceStep = page.locator("section", { has: page.locator("h2", { hasText:
 step("services for car: " + (await serviceStep.innerText()).replace(/\s+/g, " "));
 await page.click("button:has-text('Lavado normal')");
 step("bar after base: " + (await bar()));
+// The owner's notices: prices can change, and special services are quoted by WhatsApp.
+step("price notice: " + (await serviceStep.locator("p:has-text('pueden cambiar')").innerText()));
+const special = page.locator("aside", { hasText: "¿Necesitas algo especial?" });
+const specialWa = await special.locator("a:has-text('Cotizar por WhatsApp')").getAttribute("href");
+step("special services: " + (await special.locator("p").nth(1).innerText()) + " → " + decodeURIComponent(specialWa.split("text=")[1]));
 // Extras stay folded until the customer asks for them.
 step("extras folded: " + (await page.locator("button[aria-expanded=false]:has-text('¿Le agregamos algo')").innerText()).replace(/\s+/g, " "));
 await page.click("button:has-text('¿Le agregamos algo')");
@@ -80,6 +85,7 @@ await page.click("text=Ver resumen");
 await page.waitForSelector("text=Tu cotización");
 const summary = page.locator("h2", { hasText: "Tu cotización" }).locator("xpath=following-sibling::section[1]");
 step("summary: " + (await summary.innerText()).replace(/\s+/g, " "));
+step("summary notice: " + (await page.locator("p:has-text('Precio sujeto a cambios.')").innerText()));
 // With Mercado Pago set up, the summary asks for payment and keeps WhatsApp for questions.
 const wa = await page.locator("a[href^='https://wa.me']").first().getAttribute("href");
 step("whatsapp link: " + wa.slice(0, 40) + "…");

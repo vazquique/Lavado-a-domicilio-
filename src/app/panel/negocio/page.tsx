@@ -25,7 +25,7 @@ async function BusinessEditor() {
     supabase
       .from("businesses")
       .select(
-        "name, whatsapp_phone, brand_color, logo_path, deposit_type, deposit_value, cancellation_policy, privacy_notice",
+        "name, whatsapp_phone, brand_color, logo_path, deposit_type, deposit_value, cancellation_policy, privacy_notice, price_notice, special_services_notice",
       )
       .eq("id", business.id)
       .single(),
@@ -51,6 +51,8 @@ async function BusinessEditor() {
             depositValue: data.deposit_value,
             cancellationPolicy: data.cancellation_policy,
             privacyNotice: data.privacy_notice,
+            priceNotice: data.price_notice,
+            specialServicesNotice: data.special_services_notice,
           }}
         />
       </section>

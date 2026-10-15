@@ -146,6 +146,8 @@ export const businessSettingsSchema = z
     depositValue: z.string(),
     cancellationPolicy: optionalText("Política de cancelación", 2000),
     privacyNotice: optionalText("Aviso de privacidad", 4000),
+    priceNotice: optionalText("Aviso de precios", 300),
+    specialServicesNotice: optionalText("Aviso de servicios especiales", 300),
   })
   .transform((values, ctx) => {
     let depositValue: number | null;

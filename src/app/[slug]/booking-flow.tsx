@@ -11,9 +11,12 @@ import {
   CreditCard,
   Info,
   MapPin,
+  MessageCircle,
   Plus,
   Sparkles,
+  TriangleAlert,
   User,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 import { useState, useTransition, type CSSProperties, type ReactNode } from "react";
@@ -58,11 +61,14 @@ export function BookingFlow({
   data,
   now: nowIso,
   askZoneUrl,
+  specialServiceUrl,
   payOnline,
 }: {
   data: BookingData;
   now: string;
   askZoneUrl: string | null;
+  // WhatsApp message to ask for a special service that isn't in the list.
+  specialServiceUrl: string | null;
   // Mercado Pago is connected: the bar can mention paying the deposit online.
   payOnline: boolean;
 }) {
@@ -185,6 +191,7 @@ export function BookingFlow({
           onBack={() => setSummary(null)}
           policy={data.business.cancellationPolicy}
           privacy={data.business.privacyNotice}
+          priceNotice={data.business.priceNotice}
           parts={partsWorkedOn(
             summary.quote.quote.lines.flatMap((line) => catalog.services.filter((service) => service.id === line.serviceId)),
           )}
@@ -230,17 +237,25 @@ export function BookingFlow({
         {!vehicleTypeId ? (
           <Hint>Primero elige tu vehículo para ver los precios.</Hint>
         ) : (
-          <div className="space-y-2">
-            {offered.base.map((service) => (
-              <ServiceCard
-                key={service.id}
-                service={service}
-                selected={service.id === base}
-                onClick={() => setBaseServiceId(service.id)}
-                color={data.business.brandColor}
-              />
-            ))}
-          </div>
+          <>
+            <div className="space-y-2">
+              {offered.base.map((service) => (
+                <ServiceCard
+                  key={service.id}
+                  service={service}
+                  selected={service.id === base}
+                  onClick={() => setBaseServiceId(service.id)}
+                  color={data.business.brandColor}
+                />
+              ))}
+            </div>
+            {data.business.priceNotice && (
+              <p className="flex gap-2 text-sm text-muted-foreground">
+                <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+                {data.business.priceNotice}
+              </p>
+            )}
+          </>
         )}
         {baseService && <CarSummary parts={parts} color={data.business.brandColor} />}
       </Step>
@@ -338,6 +353,27 @@ export function BookingFlow({
             </>
           )}
         </Step>
+      )}
+
+      {vehicleTypeId && data.business.specialServicesNotice && (
+        <aside className="flex items-start gap-3 rounded-2xl border bg-card p-4 text-sm shadow-sm">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--brand)_14%,white)] text-[var(--brand)]">
+            <Wrench className="size-5" aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1 space-y-2">
+            <p className="font-semibold">¿Necesitas algo especial?</p>
+            <p className="text-muted-foreground">{data.business.specialServicesNotice}</p>
+            {specialServiceUrl && (
+              <a
+                href={specialServiceUrl}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-2 font-medium text-white"
+              >
+                <MessageCircle className="size-4" aria-hidden />
+                Cotizar por WhatsApp
+              </a>
+            )}
+          </div>
+        </aside>
       )}
 
       <Step number={4} title="Tu colonia" icon={MapPin}>
@@ -550,6 +586,7 @@ function Summary({
   onBack,
   policy,
   privacy,
+  priceNotice,
   parts,
   brandColor,
 }: {
@@ -558,6 +595,7 @@ function Summary({
   onBack: () => void;
   policy: string;
   privacy: string;
+  priceNotice: string;
   parts: CarPart[];
   brandColor: string;
 }) {
@@ -612,6 +650,14 @@ function Summary({
           )}
         </div>
       </section>
+      {priceNotice && (
+        <p className="flex gap-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-700" aria-hidden />
+          <span>
+            <strong className="font-semibold">Precio sujeto a cambios.</strong> {priceNotice}
+          </span>
+        </p>
+      )}
       <CarSummary parts={parts} color={brandColor} title="Esto le haremos a tu auto" />
       <section className="space-y-1 rounded-xl border bg-card p-4 text-sm shadow-sm">
         <p className="font-medium first-letter:uppercase">{summary.dateLabel}</p>

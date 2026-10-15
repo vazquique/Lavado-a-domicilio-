@@ -43,6 +43,10 @@ async function Booking({ slug }: { slug: string }) {
     business.whatsappPhone,
     `Hola ${business.name}, quiero agendar un lavado. ¿Llegan a mi colonia? Estoy en: `,
   );
+  const specialServiceUrl = whatsAppLink(
+    business.whatsappPhone,
+    `Hola ${business.name}, quiero cotizar un servicio especial: `,
+  );
 
   return (
     <div className="space-y-6">
@@ -52,6 +56,7 @@ async function Booking({ slug }: { slug: string }) {
         data={data}
         now={now.toISOString()}
         askZoneUrl={askZoneUrl}
+        specialServiceUrl={specialServiceUrl}
         payOnline={getMercadoPagoConfig() !== null && createAdminClient() !== null}
       />
     </div>

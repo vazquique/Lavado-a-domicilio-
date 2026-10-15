@@ -290,3 +290,10 @@ Respuestas del dueño y cambios de alcance aprobados, en orden.
   con los mismos nombres; el correo del negocio no se escribe en el código porque el repositorio es público.
 - Resend se queda de respaldo (y para las pruebas locales). Si algún día se compra un dominio, se puede volver a
   Resend con un remitente del dominio.
+
+### 2026-10-15 — Avisos en la página (pedido del dueño)
+- "Precio sujeto a cambios": el precio puede cambiar si el auto trae algo fuera de lo normal, como mucho pelo de
+  perro o muchos mosquitos. Sale debajo de los servicios y otra vez en el resumen, antes de agendar.
+- "¿Necesitas algo especial?": los servicios especiales (por ejemplo, quitar hongos) se cotizan por WhatsApp, con un
+  botón que abre el mensaje. No se agregan como extras porque cada caso es distinto.
+- El dueño puede cambiar los dos textos o dejarlos vacíos (ya no salen) en "Tu negocio".

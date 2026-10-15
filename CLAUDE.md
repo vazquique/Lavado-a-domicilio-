@@ -111,6 +111,9 @@ Auth magic link, Storage, RLS) · Mercado Pago (Checkout Pro, Suscripciones) · 
   encima. Las funciones que crean o mueven reservas reciben `start_place` (sin él toman el primero libre).
 - Los extras van plegados tras "¿Le agregamos algo a tu auto?" (pedido del dueño: no saturar a quien solo quiere el
   lavado).
+- Avisos del negocio (`businesses.price_notice` y `special_services_notice`, se editan en "Tu negocio"; vacío = no
+  sale): "precio sujeto a cambios" debajo de los servicios y en el resumen, y "¿Necesitas algo especial?" con botón
+  "Cotizar por WhatsApp" antes de la colonia.
 - Un servicio principal con `includes_extras` (Full detailing) oculta los extras y `calculateQuote` los ignora.
   Lo ocupado sale de la función `public.slot_places` (solo lugar de inicio y tamaño; las reservas no son públicas).
 - Servicios: `area` (exterior/interior) y `car_parts` (partes del auto, `src/lib/car-parts.ts`). La página agrupa los

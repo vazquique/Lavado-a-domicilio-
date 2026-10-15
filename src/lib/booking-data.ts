@@ -26,6 +26,10 @@ export type BookingData = {
     logoUrl: string | null;
     cancellationPolicy: string;
     privacyNotice: string;
+    // Notices on the page (empty hides them): prices that can change, and special
+    // services quoted by WhatsApp.
+    priceNotice: string;
+    specialServicesNotice: string;
   };
   catalog: Omit<QuoteCatalog, "services"> & { services: BookingService[] };
   rules: ScheduleRules;
@@ -43,7 +47,7 @@ export async function getBookingData(supabase: SupabaseClient, slug: string, now
   const { data: business, error } = await supabase
     .from("businesses")
     .select(
-      "id, slug, name, whatsapp_phone, brand_color, logo_path, deposit_type, deposit_value, working_days, booking_lead_minutes, booking_horizon_days, cancellation_policy, privacy_notice",
+      "id, slug, name, whatsapp_phone, brand_color, logo_path, deposit_type, deposit_value, working_days, booking_lead_minutes, booking_horizon_days, cancellation_policy, privacy_notice, price_notice, special_services_notice",
     )
     .eq("slug", slug)
     .eq("active", true)
@@ -93,6 +97,8 @@ export async function getBookingData(supabase: SupabaseClient, slug: string, now
       logoUrl: logoUrl(business.logo_path),
       cancellationPolicy: business.cancellation_policy,
       privacyNotice: business.privacy_notice,
+      priceNotice: business.price_notice,
+      specialServicesNotice: business.special_services_notice,
     },
     catalog: {
       vehicleTypes: vehicleTypes.data ?? [],

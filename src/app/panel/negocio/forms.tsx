@@ -20,6 +20,8 @@ export type BusinessSettingsValues = {
   depositValue: number;
   cancellationPolicy: string;
   privacyNotice: string;
+  priceNotice: string;
+  specialServicesNotice: string;
 };
 
 export function BusinessSettingsForm({ values }: { values: BusinessSettingsValues }) {
@@ -82,6 +84,26 @@ export function BusinessSettingsForm({ values }: { values: BusinessSettingsValue
         <p className="text-xs text-muted-foreground">El cliente paga esto al reservar; el resto, el día del servicio.</p>
       </fieldset>
 
+      <Field
+        label="Aviso de precios"
+        htmlFor="priceNotice"
+        hint="Sale debajo de los servicios y en el resumen, antes de agendar. Déjalo vacío para quitarlo."
+      >
+        <Textarea id="priceNotice" name="priceNotice" defaultValue={values.priceNotice} rows={3} maxLength={300} />
+      </Field>
+      <Field
+        label="Aviso de servicios especiales"
+        htmlFor="specialServicesNotice"
+        hint="Sale después de los servicios, con un botón para cotizar por WhatsApp. Déjalo vacío para quitarlo."
+      >
+        <Textarea
+          id="specialServicesNotice"
+          name="specialServicesNotice"
+          defaultValue={values.specialServicesNotice}
+          rows={3}
+          maxLength={300}
+        />
+      </Field>
       <Field label="Política de cancelación" htmlFor="cancellationPolicy" hint="El cliente la acepta antes de pagar.">
         <Textarea id="cancellationPolicy" name="cancellationPolicy" defaultValue={values.cancellationPolicy} rows={4} maxLength={2000} />
       </Field>

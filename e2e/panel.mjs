@@ -87,6 +87,7 @@ await page.fill("input[name=depositValue]", "50");
 await page.click("form >> text=Guardar");
 await page.waitForSelector("text=Guardado.");
 step("business settings saved");
+step("notices: " + JSON.stringify([await page.inputValue("#priceNotice"), await page.inputValue("#specialServicesNotice")]));
 
 // Upload a logo (generated PNG)
 const png = (await import("node:fs")).readFileSync(new URL("./fixtures/logo.png", import.meta.url));
