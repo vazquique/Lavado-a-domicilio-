@@ -19,6 +19,10 @@ function requiredText(label: string, max: number) {
     .max(max, `${label}: máximo ${max} caracteres.`);
 }
 
+// Texts the owner writes for the page (descriptions, notices): as long as he wants; this
+// only stops a paste by mistake.
+const LONG_TEXT = 5000;
+
 function optionalText(label: string, max: number) {
   return z.preprocess(
     (value) => value ?? "",
@@ -56,7 +60,7 @@ const clockTime = (label: string) =>
 export const serviceSchema = z.object({
   id: optionalId,
   name: requiredText("Nombre", 80),
-  description: optionalText("Descripción", 300),
+  description: optionalText("Descripción", LONG_TEXT),
   kind: z.enum(["base", "extra"], { error: "Tipo: elige principal o extra." }),
   capacityUnits: z.coerce
     .number({ error: "Lugares que ocupa: escribe un número." })
@@ -146,8 +150,8 @@ export const businessSettingsSchema = z
     depositValue: z.string(),
     cancellationPolicy: optionalText("Política de cancelación", 2000),
     privacyNotice: optionalText("Aviso de privacidad", 4000),
-    priceNotice: optionalText("Aviso de precios", 300),
-    specialServicesNotice: optionalText("Aviso de servicios especiales", 300),
+    priceNotice: optionalText("Aviso de precios", LONG_TEXT),
+    specialServicesNotice: optionalText("Aviso de servicios especiales", LONG_TEXT),
   })
   .transform((values, ctx) => {
     let depositValue: number | null;

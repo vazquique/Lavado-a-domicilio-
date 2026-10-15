@@ -173,8 +173,10 @@ describe("businessSettingsSchema", () => {
     });
     expect(result.priceNotice).toBe("El precio puede subir si hay lodo.");
     expect(result.specialServicesNotice).toBe("");
-    const long = businessSettingsSchema.safeParse({ ...base, ...deposit, priceNotice: "x".repeat(301) });
-    expect(long.success).toBe(false);
-    if (!long.success) expect(firstError(long.error)).toBe("Aviso de precios: máximo 300 caracteres.");
+    const long = "Si el auto trae mucho lodo, el precio puede subir. ".repeat(30);
+    expect(businessSettingsSchema.parse({ ...base, ...deposit, priceNotice: long }).priceNotice).toBe(long.trim());
+    const pasted = businessSettingsSchema.safeParse({ ...base, ...deposit, priceNotice: "x".repeat(5001) });
+    expect(pasted.success).toBe(false);
+    if (!pasted.success) expect(firstError(pasted.error)).toBe("Aviso de precios: máximo 5000 caracteres.");
   });
 });

@@ -252,7 +252,7 @@ export function BookingFlow({
             {data.business.priceNotice && (
               <p className="flex gap-2 text-sm text-muted-foreground">
                 <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
-                {data.business.priceNotice}
+                <span className="whitespace-pre-line">{data.business.priceNotice}</span>
               </p>
             )}
           </>
@@ -362,7 +362,7 @@ export function BookingFlow({
           </span>
           <div className="min-w-0 flex-1 space-y-2">
             <p className="font-semibold">¿Necesitas algo especial?</p>
-            <p className="text-muted-foreground">{data.business.specialServicesNotice}</p>
+            <p className="whitespace-pre-line text-muted-foreground">{data.business.specialServicesNotice}</p>
             {specialServiceUrl && (
               <a
                 href={specialServiceUrl}
@@ -653,7 +653,7 @@ function Summary({
       {priceNotice && (
         <p className="flex gap-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
           <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-700" aria-hidden />
-          <span>
+          <span className="whitespace-pre-line">
             <strong className="font-semibold">Precio sujeto a cambios.</strong> {priceNotice}
           </span>
         </p>
@@ -863,7 +863,9 @@ function ServiceCard({
               {formatMXN(service.priceCents)}
             </span>
           </span>
-          {service.description && <span className="mt-1 block text-sm opacity-80">{service.description}</span>}
+          {service.description && (
+            <span className="mt-1 block text-sm whitespace-pre-line opacity-80">{service.description}</span>
+          )}
           {service.includesExtras && <span className="mt-1 block text-sm opacity-80">Incluye todos los extras.</span>}
           {labels.length > 0 && (
             <span className="mt-2 flex flex-wrap gap-1">

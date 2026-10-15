@@ -89,7 +89,7 @@ export function BusinessSettingsForm({ values }: { values: BusinessSettingsValue
         htmlFor="priceNotice"
         hint="Sale debajo de los servicios y en el resumen, antes de agendar. Déjalo vacío para quitarlo."
       >
-        <Textarea id="priceNotice" name="priceNotice" defaultValue={values.priceNotice} rows={3} maxLength={300} />
+        <Textarea id="priceNotice" name="priceNotice" defaultValue={values.priceNotice} rows={3} />
       </Field>
       <Field
         label="Aviso de servicios especiales"
@@ -101,7 +101,6 @@ export function BusinessSettingsForm({ values }: { values: BusinessSettingsValue
           name="specialServicesNotice"
           defaultValue={values.specialServicesNotice}
           rows={3}
-          maxLength={300}
         />
       </Field>
       <Field label="Política de cancelación" htmlFor="cancellationPolicy" hint="El cliente la acepta antes de pagar.">

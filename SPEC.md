@@ -297,3 +297,5 @@ Respuestas del dueño y cambios de alcance aprobados, en orden.
 - "¿Necesitas algo especial?": los servicios especiales (por ejemplo, quitar hongos) se cotizan por WhatsApp, con un
   botón que abre el mensaje. No se agregan como extras porque cada caso es distinto.
 - El dueño puede cambiar los dos textos o dejarlos vacíos (ya no salen) en "Tu negocio".
+- Sin límite de letras para los avisos ni para la descripción de cada servicio (pedido del dueño); solo se rechaza
+  un texto de más de 5,000 letras, para que no se pegue algo por error. Los saltos de línea se respetan.

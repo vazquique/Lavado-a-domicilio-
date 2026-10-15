@@ -59,8 +59,7 @@ export function ServiceForm({
           id={`description-${key}`}
           name="description"
           defaultValue={service?.description}
-          maxLength={300}
-          rows={2}
+          rows={3}
         />
       </Field>
       <div className="grid grid-cols-2 gap-3">
