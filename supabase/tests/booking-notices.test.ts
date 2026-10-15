@@ -32,19 +32,17 @@ describe("booking notices", () => {
     });
   });
 
-  test("the owner changes them or leaves them empty, up to 300 characters", async () => {
+  test("the owner changes them, as long as he wants, or leaves them empty", async () => {
+    const long = "Si el auto trae mucho lodo, arena o pelo de mascota, el precio puede subir. ".repeat(20);
     const changed = await asOwner(async (tx) => {
       await tx.query("update public.businesses set price_notice = $2, special_services_notice = '' where id = $1", [
         jbsId,
-        "El precio puede subir si hay lodo.",
+        long,
       ]);
       return notices(tx);
     });
-    expect(changed).toEqual({ price_notice: "El precio puede subir si hay lodo.", special_services_notice: "" });
-
-    await expect(
-      asOwner((tx) => tx.query("update public.businesses set price_notice = $2 where id = $1", [jbsId, "x".repeat(301)])),
-    ).rejects.toThrow(/price_notice/);
+    expect(changed).toEqual({ price_notice: long, special_services_notice: "" });
+    expect(long.length).toBeGreaterThan(1000);
   });
 
   test("nobody else can change them", async () => {
